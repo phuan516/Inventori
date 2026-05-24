@@ -1,0 +1,87 @@
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  background: #f6f7f9;
+  color: #0f1419;
+  font-feature-settings: "ss01", "cv11";
+}
+
+button {
+  font-family: inherit;
+}
+
+input, textarea, select {
+  font-family: inherit;
+  color: inherit;
+}
+
+input:focus, textarea:focus, select:focus {
+  outline: none;
+}
+
+::placeholder {
+  color: #9aa1ad;
+}
+
+a {
+  text-decoration: none;
+  color: inherit;
+}
+
+/* ── Animations ── */
+
+.inv-fade-in {
+  animation: invFade 0.25s ease;
+}
+@keyframes invFade {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: none; }
+}
+
+.inv-pop {
+  animation: invPop 0.18s ease;
+}
+@keyframes invPop {
+  from { opacity: 0; transform: scale(0.97); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+@keyframes invSlide {
+  from { transform: translateX(20px); opacity: 0; }
+  to   { transform: none; opacity: 1; }
+}
+
+@keyframes invToast {
+  from { transform: translateY(8px); opacity: 0; }
+  to   { transform: none; opacity: 1; }
+}
+
+.inv-spinner {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 2px solid #e6e8ec;
+  border-top-color: #1f4cd8;
+  animation: invSpin 0.8s linear infinite;
+}
+@keyframes invSpin {
+  to { transform: rotate(360deg); }
+}
+
+/* ── Utility ── */
+
+.inv-row:hover {
+  background: #f6f7f9 !important;
+}
+
+.inv-link {
+  color: #1f4cd8;
+  cursor: pointer;
+}
+.inv-link:hover {
+  text-decoration: underline;
+}
