@@ -15,6 +15,7 @@ export const authOptions: NextAuthOptions = {
             'https://www.googleapis.com/auth/drive.metadata.readonly',
           ].join(' '),
           access_type: 'offline',
+          prompt: 'select_account',
         },
       },
     }),
