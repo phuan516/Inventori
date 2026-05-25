@@ -40,7 +40,7 @@ function AuthContextInner({ children }: { children: ReactNode }) {
   const user = sessionToUser(session);
 
   function signIn(callbackUrl = '/sheets') {
-    nextSignIn('google', { callbackUrl });
+    nextSignIn('google', { callbackUrl, prompt: 'select_account' });
   }
 
   function signOut() {
