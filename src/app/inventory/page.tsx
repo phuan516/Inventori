@@ -19,12 +19,12 @@ import { Icon } from '@/components/ui/Icon';
 
 export default function InventoryPage() {
   const router = useRouter();
-  const { user, signOut } = useAuth();
+  const { user, loading: authLoading, signOut } = useAuth();
 
   // Redirect to login if not signed in
   useEffect(() => {
-    if (!user) router.replace('/login');
-  }, [user, router]);
+    if (!authLoading && !user) router.replace('/login');
+  }, [user, authLoading, router]);
 
   const [items, setItems] = useState<Product[]>(() => SEED.map(p => ({ ...p })));
   const [query, setQuery] = useState('');
@@ -104,7 +104,7 @@ export default function InventoryPage() {
     router.push('/');
   }
 
-  if (!user) return null;
+  if (authLoading || !user) return null;
 
   return (
     <div style={{ width: '100%', minHeight: '100vh', background: T.bg, color: T.ink, display: 'grid', gridTemplateColumns: '232px 1fr' }}>

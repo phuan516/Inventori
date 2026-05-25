@@ -1,35 +1,64 @@
 'use client';
 
-import { createContext, useContext, useState, type ReactNode } from 'react';
+import { createContext, useContext, type ReactNode } from 'react';
+import {
+  SessionProvider,
+  useSession,
+  signIn as nextSignIn,
+  signOut as nextSignOut,
+} from 'next-auth/react';
 import type { User } from '@/lib/types';
 import T from '@/lib/theme';
 
 interface AuthContextType {
   user: User | null;
-  signIn: () => void;
+  loading: boolean;
+  signIn: (callbackUrl?: string) => void;
   signOut: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
-// Mock user — replace with real Google OAuth user once auth is wired up
-export const MOCK_USER: User = {
-  name: 'Kenji Saito',
-  email: 'kenji@saitohobby.com',
-  initials: 'KS',
-  tone: T.brand,
-};
+function sessionToUser(session: ReturnType<typeof useSession>['data']): User | null {
+  if (!session?.user) return null;
+  const name = session.user.name ?? session.user.email ?? 'User';
+  const parts = name.trim().split(/\s+/);
+  const initials = parts.length >= 2
+    ? (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
+    : name.slice(0, 2).toUpperCase();
+  return {
+    name,
+    email: session.user.email ?? '',
+    initials,
+    tone: T.brand,
+  };
+}
 
-export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
+function AuthContextInner({ children }: { children: ReactNode }) {
+  const { data: session, status } = useSession();
+  const loading = status === 'loading';
+  const user = sessionToUser(session);
 
-  const signIn = () => setUser(MOCK_USER);
-  const signOut = () => setUser(null);
+  function signIn(callbackUrl = '/sheets') {
+    nextSignIn('google', { callbackUrl });
+  }
+
+  function signOut() {
+    nextSignOut({ callbackUrl: '/' });
+  }
 
   return (
-    <AuthContext.Provider value={{ user, signIn, signOut }}>
+    <AuthContext.Provider value={{ user, loading, signIn, signOut }}>
       {children}
     </AuthContext.Provider>
+  );
+}
+
+export function AuthProvider({ children }: { children: ReactNode }) {
+  return (
+    <SessionProvider>
+      <AuthContextInner>{children}</AuthContextInner>
+    </SessionProvider>
   );
 }
 

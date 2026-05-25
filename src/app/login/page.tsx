@@ -11,9 +11,7 @@ export default function LoginPage() {
   const { signIn } = useAuth();
 
   function handleGoogleSignIn() {
-    // TODO: replace with real Google OAuth flow
-    signIn();
-    router.push('/inventory');
+    signIn('/sheets');
   }
 
   return (

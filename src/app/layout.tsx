@@ -24,6 +24,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body
         className={`${geistSans.variable} ${geistMono.variable}`}
         style={{ fontFamily: 'var(--font-geist-sans), Inter, system-ui, sans-serif' }}
+        suppressHydrationWarning
       >
         <AuthProvider>
           {children}
