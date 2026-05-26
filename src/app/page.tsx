@@ -1,10 +1,11 @@
 'use client';
 
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import type { ReactNode } from 'react';
 import T from '@/lib/theme';
 import Logo from '@/components/Logo';
-import GoogleButton from '@/components/GoogleButton';
 import Btn from '@/components/ui/Btn';
 import Pill from '@/components/ui/Pill';
 import { Icon } from '@/components/ui/Icon';
@@ -13,6 +14,7 @@ import ImgPlaceholder from '@/components/ui/ImgPlaceholder';
 export default function LandingPage() {
   const router = useRouter();
   const goToLogin = () => router.push('/login');
+  const [requestOpen, setRequestOpen] = useState(false);
 
   return (
     <div className="inv-fade-in" style={{ minHeight: '100vh', background: T.bg }}>
@@ -29,14 +31,8 @@ export default function LandingPage() {
           display: 'flex', alignItems: 'center', gap: 28,
         }}>
           <Logo />
-          <nav style={{ display: 'flex', gap: 22, fontSize: 13.5, color: T.ink2 }}>
-            <a style={{ cursor: 'pointer', color: T.ink2 }}>How it works</a>
-            <a style={{ cursor: 'pointer', color: T.ink2 }}>For hobby shops</a>
-            <a style={{ cursor: 'pointer', color: T.ink2 }}>FAQ</a>
-          </nav>
           <div style={{ flex: 1 }} />
           <a style={{ fontSize: 13.5, color: T.ink2, cursor: 'pointer' }} onClick={goToLogin}>Sign in</a>
-          <Btn kind="primary" onClick={goToLogin} style={{ height: 32 }}>Open in Google</Btn>
         </div>
       </header>
 
@@ -51,7 +47,7 @@ export default function LandingPage() {
               marginBottom: 24,
             }}>
               <span style={{ width: 6, height: 6, borderRadius: '50%', background: T.brand }} />
-              Free · Your data lives in your Google Sheet
+              Early access · Backed by your Google Drive
             </div>
             <h1 style={{
               margin: 0, fontSize: 56, fontWeight: 600, letterSpacing: '-.035em',
@@ -63,18 +59,12 @@ export default function LandingPage() {
             <p style={{
               margin: '22px 0 32px', fontSize: 17, lineHeight: 1.55, color: T.ink2, maxWidth: 520,
             }}>
-              Sign in with Google and Inventori creates a sheet in your Drive.
-              Every edit you make here writes straight to that file. No lock-in,
-              no database, no monthly bill — just a friendlier way to keep score of the shelf.
+              Inventori connects to your Google Drive to read and manage your inventory data.
+              No lock-in, no database, no monthly bill — just a friendlier way to keep score of the shelf.
             </p>
             <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
-              <GoogleButton onClick={goToLogin} />
+              <RequestAccessBtn onClick={() => setRequestOpen(true)} />
               <Btn kind="ghost" style={{ height: 44, padding: '0 18px' }}>See a demo shop</Btn>
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginTop: 16, fontSize: 12.5, color: T.mute, flexWrap: 'wrap' }}>
-              <Check>Free, always</Check>
-              <Check>No credit card</Check>
-              <Check>Delete the sheet, delete the app</Check>
             </div>
           </div>
           <HeroVisual />
@@ -93,12 +83,12 @@ export default function LandingPage() {
             </h2>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16 }}>
-            <Step n="01" title="Continue with Google"
-              body='Sign in once. Inventori asks for the "drive.file" scope, which limits it to files it creates — not the rest of your Drive.' />
-            <Step n="02" title="A sheet appears in your Drive"
-              body='Called "Inventori · <shop name>". Open it any time, anywhere — phone, laptop, Excel, whatever. The data is yours.' />
+            <Step n="01" title="Request access"
+              body="Submit a request and our team reviews your application. Once approved, you can sign in with Google to get started." />
+            <Step n="02" title="Connect your Drive"
+              body="Inventori connects to your Google Drive to read and manage your inventory files — phone, laptop, or desktop. The data stays yours." />
             <Step n="03" title="Edit here, or edit there"
-              body="Both write to the same rows. Add a kit on your phone, mark stock on a Chromebook, open the raw sheet on tax day. It just stays in sync." />
+              body="Both write to the same rows. Add a kit on your phone, mark stock on a Chromebook, open the raw file on tax day. It just stays in sync." />
           </div>
         </div>
       </section>
@@ -160,7 +150,7 @@ export default function LandingPage() {
             <Faq q="Is it really free?"
               a="Yes. Inventori doesn't store your data, so we don't have a server bill to pass on. Some day we may add an optional paid tier with multi-shop or print labels, but the inventory tracker stays free." />
             <Faq q="What does it ask Google for?"
-              a='Two things. Your name and email (so we know you&apos;re you), and the "drive.file" scope — which lets Inventori see and edit only files it creates. We can&apos;t see your other Drive files, your mail, or your calendar.' />
+              a="Your name and email (so we know you're you), and access to your Google Drive — so Inventori can read and manage your inventory files stored there. We don't access your mail or calendar." />
             <Faq q="Can I edit the sheet directly?"
               a="Absolutely. Open it in Google Sheets, on your phone, in Excel — whatever. Inventori reads your changes next time it loads, and writes back the same way." />
             <Faq q="What if I want to leave?"
@@ -178,13 +168,13 @@ export default function LandingPage() {
         }}>
           <div>
             <h3 style={{ margin: 0, fontSize: 28, fontWeight: 600, letterSpacing: '-.02em', lineHeight: 1.15 }}>
-              One click. A sheet in your Drive. A nicer view of it here.
+              Request access and start managing inventory the way it should be.
             </h3>
             <p style={{ margin: '10px 0 0', color: T.mute, fontSize: 14.5, maxWidth: 560 }}>
               Free, forever. No card, no trial, no upsells.
             </p>
           </div>
-          <GoogleButton onClick={goToLogin} />
+          <RequestAccessBtn onClick={() => setRequestOpen(true)} />
         </div>
       </section>
 
@@ -197,28 +187,123 @@ export default function LandingPage() {
           <Logo small />
           <span>© 2026 Inventori · A small free thing for shopkeepers.</span>
           <div style={{ flex: 1 }} />
-          <a style={{ color: T.mute, cursor: 'pointer' }}>Privacy</a>
-          <a style={{ color: T.mute, cursor: 'pointer' }}>Terms</a>
+          <Link href="/privacy" style={{ color: T.mute, textDecoration: 'none' }}>Privacy</Link>
+          <Link href="/terms" style={{ color: T.mute, textDecoration: 'none' }}>Terms</Link>
           <a style={{ color: T.mute, cursor: 'pointer' }}>Open source</a>
         </div>
       </footer>
+
+      {requestOpen && <RequestModal onClose={() => setRequestOpen(false)} />}
     </div>
   );
 }
 
 /* ── Building blocks ── */
 
-function Check({ children }: { children: ReactNode }) {
+function RequestAccessBtn({ onClick }: { onClick: () => void }) {
   return (
-    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-      <span style={{
-        width: 14, height: 14, borderRadius: '50%', background: T.okSoft,
-        color: T.ok, display: 'grid', placeItems: 'center',
+    <button
+      onClick={onClick}
+      style={{
+        display: 'inline-flex', alignItems: 'center', gap: 10,
+        background: T.ink, color: '#fff', border: 'none', borderRadius: 8,
+        padding: '0 22px', height: 44, fontSize: 14, fontWeight: 500,
+        cursor: 'pointer', fontFamily: 'inherit', transition: 'background .12s',
+      }}
+      onMouseEnter={(e) => { e.currentTarget.style.background = '#1f2731'; }}
+      onMouseLeave={(e) => { e.currentTarget.style.background = T.ink; }}
+    >
+      Request Access
+    </button>
+  );
+}
+
+function RequestModal({ onClose }: { onClose: () => void }) {
+  return (
+    <div
+      style={{
+        position: 'fixed', inset: 0, zIndex: 100,
+        background: 'rgba(0,0,0,.45)', display: 'grid', placeItems: 'center',
+        padding: 24,
+      }}
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+    >
+      <div style={{
+        width: '100%', maxWidth: 440, background: T.bg,
+        border: `1px solid ${T.rule}`, borderRadius: 14,
+        boxShadow: '0 24px 64px rgba(0,0,0,.18)', overflow: 'hidden',
       }}>
-        <Icon.check s={9} />
-      </span>
-      {children}
-    </span>
+        {/* Header */}
+        <div style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          padding: '20px 24px 0',
+        }}>
+          <div>
+            <div style={{ fontSize: 17, fontWeight: 600, letterSpacing: '-.01em' }}>Request Access</div>
+            <div style={{ fontSize: 13, color: T.mute, marginTop: 4 }}>We&apos;ll review your request and get back to you.</div>
+          </div>
+          <button
+            onClick={onClose}
+            style={{
+              background: 'none', border: 'none', cursor: 'pointer',
+              color: T.mute, padding: 4, borderRadius: 6, lineHeight: 1,
+            }}
+          >
+            <Icon.x s={16} />
+          </button>
+        </div>
+
+        {/* Form */}
+        <div style={{ padding: '20px 24px 24px', display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <label style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+            <span style={{ fontSize: 12.5, fontWeight: 500, color: T.ink2 }}>Name</span>
+            <input
+              placeholder="Your name"
+              style={{
+                height: 38, padding: '0 12px', borderRadius: 8, fontSize: 14,
+                border: `1px solid ${T.rule}`, background: T.bg, color: T.ink,
+                fontFamily: 'inherit', outline: 'none',
+              }}
+            />
+          </label>
+          <label style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+            <span style={{ fontSize: 12.5, fontWeight: 500, color: T.ink2 }}>Email</span>
+            <input
+              type="email"
+              placeholder="you@example.com"
+              style={{
+                height: 38, padding: '0 12px', borderRadius: 8, fontSize: 14,
+                border: `1px solid ${T.rule}`, background: T.bg, color: T.ink,
+                fontFamily: 'inherit', outline: 'none',
+              }}
+            />
+          </label>
+          <label style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+            <span style={{ fontSize: 12.5, fontWeight: 500, color: T.ink2 }}>Tell us about your shop <span style={{ color: T.mute, fontWeight: 400 }}>(optional)</span></span>
+            <textarea
+              placeholder="What kind of inventory do you manage?"
+              rows={3}
+              style={{
+                padding: '8px 12px', borderRadius: 8, fontSize: 14, resize: 'vertical',
+                border: `1px solid ${T.rule}`, background: T.bg, color: T.ink,
+                fontFamily: 'inherit', outline: 'none', lineHeight: 1.5,
+              }}
+            />
+          </label>
+          <button
+            style={{
+              marginTop: 4, height: 42, background: T.ink, color: '#fff',
+              border: 'none', borderRadius: 8, fontSize: 14, fontWeight: 500,
+              cursor: 'pointer', fontFamily: 'inherit', transition: 'background .12s',
+            }}
+            onMouseEnter={(e) => { e.currentTarget.style.background = '#1f2731'; }}
+            onMouseLeave={(e) => { e.currentTarget.style.background = T.ink; }}
+          >
+            Send Request
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }
 

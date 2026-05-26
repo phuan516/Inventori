@@ -1,6 +1,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import type { CSSProperties, ReactNode } from 'react';
 import T from '@/lib/theme';
 import { useAuth } from '@/context/AuthContext';
@@ -54,7 +55,7 @@ export default function LoginPage() {
             color: '#fff', fontSize: 11.5, fontWeight: 500, padding: '4px 10px',
             borderRadius: 100, marginBottom: 20,
           }}>
-            <SheetGlyph s={13} /> Your sheet, in your Drive
+            <SheetGlyph s={13} /> Powered by your Google Drive
           </div>
           <h2 style={{ margin: 0, fontSize: 30, fontWeight: 600, letterSpacing: '-.025em', lineHeight: 1.15, maxWidth: 360 }}>
             Welcome back to a tidier shelf.
@@ -63,18 +64,13 @@ export default function LoginPage() {
             Sign in with the same Google account that owns your Inventori sheet.
             We don&apos;t store passwords — Google handles that.
           </p>
-          <div style={{ display: 'flex', gap: 18, marginTop: 28, fontSize: 12, color: 'rgba(255,255,255,.6)' }}>
-            <StatItem v="$0" l="Forever price" />
-            <StatItem v="1" l="File in your Drive" />
-            <StatItem v="0" l="Other files we see" />
-          </div>
         </div>
       </aside>
 
       {/* ── Right panel — sign-in card ── */}
       <main style={{ display: 'flex', flexDirection: 'column' }}>
         {/* Top bar */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '20px 32px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', padding: '20px 32px' }}>
           <button
             onClick={() => router.push('/')}
             style={{
@@ -87,10 +83,6 @@ export default function LoginPage() {
           >
             <Icon.arrowLeft s={14} /> Back
           </button>
-          <div style={{ fontSize: 13, color: T.mute }}>
-            New here?{' '}
-            <a className="inv-link" onClick={handleGoogleSignIn}>Create an account</a>
-          </div>
         </div>
 
         {/* Centered card */}
@@ -118,17 +110,6 @@ export default function LoginPage() {
               <GoogleG /> Continue with Google
             </button>
 
-            {/* Or divider */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12, margin: '22px 0', color: T.mute, fontSize: 11.5 }}>
-              <span style={{ flex: 1, height: 1, background: T.rule }} />
-              <span>or</span>
-              <span style={{ flex: 1, height: 1, background: T.rule }} />
-            </div>
-
-            {/* Coming-soon providers */}
-            <DisabledProvider icon={<MicrosoftG />} label="Continue with Microsoft" hint="Coming soon" />
-            <DisabledProvider icon={<EmailG />} label="Continue with email" hint="Not supported" style={{ marginTop: 10 }} />
-
             {/* Scope reassurance */}
             <div style={{
               marginTop: 28, padding: '12px 14px',
@@ -137,17 +118,14 @@ export default function LoginPage() {
             }}>
               <span style={{ color: T.ok, marginTop: 1 }}><ShieldGlyph s={16} /></span>
               <div style={{ fontSize: 12.5, color: T.ink2, lineHeight: 1.5 }}>
-                Inventori asks for the{' '}
-                <code style={{ fontFamily: T.fontMono, fontSize: 11.5, background: T.bg, padding: '0 5px', borderRadius: 3, border: `1px solid ${T.rule}` }}>
-                  drive.file
-                </code>{' '}
-                scope. It can only see and edit the sheet it creates — never the rest of your Drive.
+                Inventori accesses your Google Drive to read and manage your inventory files stored there.
+                We don&apos;t access your mail or calendar.
               </div>
             </div>
 
             <p style={{ marginTop: 22, fontSize: 11.5, color: T.mute, lineHeight: 1.55 }}>
               By continuing, you agree to Inventori&apos;s{' '}
-              <a className="inv-link">Terms of Service</a> and{' '}
+              <Link href="/terms" className="inv-link">Terms of Service</Link> and{' '}
               <a className="inv-link">Privacy Policy</a>.
             </p>
           </div>
@@ -158,7 +136,7 @@ export default function LoginPage() {
           <span>© 2026 Inventori</span>
           <div style={{ flex: 1 }} />
           <a style={{ color: T.mute, cursor: 'pointer' }}>Help</a>
-          <a style={{ color: T.mute, cursor: 'pointer' }}>Privacy</a>
+          <Link href="/privacy" style={{ color: T.mute, textDecoration: 'none' }}>Privacy</Link>
           <a style={{ color: T.mute, cursor: 'pointer' }}>Status</a>
         </div>
       </main>
