@@ -17,6 +17,7 @@ export const Icon = {
   trash:     ({ s = 16 }: P) => <svg width={s} height={s} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"><path d="M3 4h10M6 4V2.5h4V4M5 4l.7 9.5a1 1 0 0 0 1 .9h2.6a1 1 0 0 0 1-.9L11 4"/></svg>,
   arrowLeft: ({ s = 16 }: P) => <svg width={s} height={s} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M13 8H3M7 4 3 8l4 4"/></svg>,
   logout:    ({ s = 16 }: P) => <svg width={s} height={s} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"><path d="M9 2H3v12h6M11 5l3 3-3 3M14 8H6"/></svg>,
+  sheet:     ({ s = 16 }: P) => <svg width={s} height={s} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="2" width="12" height="12" rx="1.5"/><path d="M2 6h12M6 6v8"/></svg>,
 };
 
 import type { ReactElement } from 'react';

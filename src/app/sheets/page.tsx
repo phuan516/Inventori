@@ -19,6 +19,11 @@ export default function SheetsPage() {
   const [sheets, setSheets] = useState<Sheet[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [creating, setCreating] = useState(false);
+  const [createName, setCreateName] = useState('');
+  const [createError, setCreateError] = useState<string | null>(null);
+  const [showCreate, setShowCreate] = useState(false);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
 
   useEffect(() => {
     if (authLoading) return;
@@ -38,10 +43,33 @@ export default function SheetsPage() {
       });
   }, [user, authLoading, router]);
 
+  async function handleCreate() {
+    const fullName = `Inventori - ${createName.trim()}`;
+    setCreating(true);
+    setCreateError(null);
+    try {
+      const res = await fetch('/api/sheets', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: fullName }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? 'Failed to create sheet');
+      setSheets(prev => [data.sheet, ...prev]);
+      setShowCreate(false);
+      setCreateName('');
+    } catch (e: unknown) {
+      setCreateError(e instanceof Error ? e.message : 'Failed to create sheet');
+    } finally {
+      setCreating(false);
+    }
+  }
+
   if (!user) return null;
 
   return (
     <div style={{ minHeight: '100vh', background: T.bg, color: T.ink }}>
+      <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
 
       {/* Header */}
       <header style={{
@@ -79,14 +107,74 @@ export default function SheetsPage() {
       {/* Content */}
       <div style={{ maxWidth: 820, margin: '0 auto', padding: '48px 32px' }}>
 
-        <div style={{ marginBottom: 32 }}>
-          <h1 style={{ margin: 0, fontSize: 28, fontWeight: 600, letterSpacing: '-.02em' }}>
-            Choose a Google Sheet
-          </h1>
-          <p style={{ margin: '8px 0 0', fontSize: 14.5, color: T.ink2, lineHeight: 1.55 }}>
-            Pick an existing spreadsheet to use as your inventory, or open a new one in Google Sheets.
-          </p>
+        <div style={{ marginBottom: 32, display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16 }}>
+          <div>
+            <h1 style={{ margin: 0, fontSize: 28, fontWeight: 600, letterSpacing: '-.02em' }}>
+              Choose a Sheet
+            </h1>
+            <p style={{ margin: '8px 0 0', fontSize: 14.5, color: T.ink2, lineHeight: 1.55 }}>
+              Only sheets named <strong>Inventori - …</strong> are shown.
+            </p>
+          </div>
+          <button
+            onClick={() => { setShowCreate(v => !v); setCreateError(null); }}
+            style={{
+              flexShrink: 0, marginTop: 4,
+              padding: '9px 16px', borderRadius: 8,
+              border: `1px solid ${T.brand}`,
+              background: T.brand, color: '#fff',
+              fontSize: 13.5, fontWeight: 500, cursor: 'pointer', fontFamily: 'inherit',
+            }}
+          >
+            + New sheet
+          </button>
         </div>
+
+        {showCreate && (
+          <div style={{
+            marginBottom: 20, padding: '16px 18px', borderRadius: 10,
+            background: T.panel, border: `1px solid ${T.rule}`,
+          }}>
+            <div style={{ fontSize: 13, fontWeight: 500, marginBottom: 10 }}>Create a new Inventori sheet</div>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+              <span style={{
+                padding: '8px 12px', borderRadius: 7,
+                border: `1px solid ${T.rule}`, background: T.bg,
+                fontSize: 13.5, color: T.mute, whiteSpace: 'nowrap',
+              }}>
+                Inventori -
+              </span>
+              <input
+                autoFocus
+                value={createName}
+                onChange={e => setCreateName(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && createName.trim() && handleCreate()}
+                placeholder="Sheet name"
+                style={{
+                  flex: 1, padding: '8px 12px', borderRadius: 7,
+                  border: `1px solid ${T.rule}`, background: T.bg,
+                  fontSize: 13.5, color: T.ink, fontFamily: 'inherit', outline: 'none',
+                }}
+              />
+              <button
+                onClick={handleCreate}
+                disabled={!createName.trim() || creating}
+                style={{
+                  padding: '8px 16px', borderRadius: 7,
+                  border: 'none', background: createName.trim() ? T.brand : T.rule,
+                  color: createName.trim() ? '#fff' : T.mute,
+                  fontSize: 13.5, fontWeight: 500, cursor: createName.trim() ? 'pointer' : 'default',
+                  fontFamily: 'inherit', transition: 'background .15s',
+                }}
+              >
+                {creating ? 'Creating…' : 'Create'}
+              </button>
+            </div>
+            {createError && (
+              <div style={{ marginTop: 8, fontSize: 12.5, color: T.danger }}>{createError}</div>
+            )}
+          </div>
+        )}
 
         {loading && <LoadingState />}
 
@@ -111,7 +199,9 @@ export default function SheetsPage() {
                 key={sheet.id}
                 sheet={sheet}
                 divider={i > 0}
-                onSelect={() => router.push(`/inventory`)}
+                selecting={selectedId === sheet.id}
+                dimmed={selectedId !== null && selectedId !== sheet.id}
+                onSelect={() => { setSelectedId(sheet.id); router.push('/inventory'); }}
               />
             ))}
           </div>
@@ -123,7 +213,9 @@ export default function SheetsPage() {
 
 /* ── Sheet row ── */
 
-function SheetRow({ sheet, divider, onSelect }: { sheet: Sheet; divider: boolean; onSelect: () => void }) {
+function SheetRow({ sheet, divider, selecting, dimmed, onSelect }: {
+  sheet: Sheet; divider: boolean; selecting: boolean; dimmed: boolean; onSelect: () => void;
+}) {
   const [hover, setHover] = useState(false);
   const date = sheet.modifiedTime
     ? new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric' }).format(new Date(sheet.modifiedTime))
@@ -133,16 +225,18 @@ function SheetRow({ sheet, divider, onSelect }: { sheet: Sheet; divider: boolean
     <div
       role="button"
       tabIndex={0}
-      onClick={onSelect}
-      onKeyDown={(e) => e.key === 'Enter' && onSelect()}
+      onClick={() => !selecting && !dimmed && onSelect()}
+      onKeyDown={(e) => e.key === 'Enter' && !selecting && !dimmed && onSelect()}
       onMouseEnter={() => setHover(true)}
       onMouseLeave={() => setHover(false)}
       style={{
         display: 'flex', alignItems: 'center', gap: 14,
         padding: '14px 18px',
         borderTop: divider ? `1px solid ${T.rule}` : 'none',
-        background: hover ? T.bg : T.panel,
-        cursor: 'pointer', transition: 'background .1s',
+        background: selecting ? T.brandSoft : hover && !dimmed ? T.bg : T.panel,
+        cursor: dimmed || selecting ? 'default' : 'pointer',
+        transition: 'background .1s, opacity .1s',
+        opacity: dimmed ? 0.4 : 1,
       }}
     >
       <SheetIcon />
@@ -150,9 +244,11 @@ function SheetRow({ sheet, divider, onSelect }: { sheet: Sheet; divider: boolean
         <div style={{ fontSize: 14.5, fontWeight: 500, color: T.ink, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
           {sheet.name}
         </div>
-        <div style={{ fontSize: 12, color: T.mute, marginTop: 2 }}>Modified {date}</div>
+        <div style={{ fontSize: 12, color: selecting ? T.brand : T.mute, marginTop: 2 }}>
+          {selecting ? 'Opening…' : `Modified ${date}`}
+        </div>
       </div>
-      <ChevronRight />
+      {selecting ? <Spinner /> : <ChevronRight />}
     </div>
   );
 }
@@ -187,9 +283,9 @@ function EmptyState() {
       background: T.panel, border: `1px solid ${T.rule}`, borderRadius: 12,
     }}>
       <SheetIcon size={40} />
-      <div style={{ marginTop: 14, fontSize: 16, fontWeight: 600 }}>No spreadsheets found</div>
+      <div style={{ marginTop: 14, fontSize: 16, fontWeight: 600 }}>No Inventori sheets found</div>
       <div style={{ marginTop: 6, fontSize: 13.5, color: T.mute, maxWidth: 360, margin: '6px auto 0', lineHeight: 1.55 }}>
-        Create a new Google Sheet in your Drive, then come back here to select it.
+        Click <strong>+ New sheet</strong> above to create your first Inventori sheet.
       </div>
     </div>
   );
@@ -205,6 +301,18 @@ function SheetIcon({ size = 32 }: { size?: number }) {
       <rect x="7" y="14" width="18" height="3" rx="1" fill="#fff" opacity=".95" />
       <rect x="7" y="19" width="12" height="3" rx="1" fill="#fff" opacity=".95" />
       <rect x="15" y="8" width="2"  height="16" rx="1" fill="#0F9D58" />
+    </svg>
+  );
+}
+
+function Spinner() {
+  return (
+    <svg
+      width="16" height="16" viewBox="0 0 16 16" fill="none"
+      style={{ animation: 'spin .7s linear infinite', flexShrink: 0 }}
+    >
+      <circle cx="8" cy="8" r="6" stroke={T.rule} strokeWidth="2" />
+      <path d="M8 2a6 6 0 0 1 6 6" stroke={T.brand} strokeWidth="2" strokeLinecap="round" />
     </svg>
   );
 }

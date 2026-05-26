@@ -101,14 +101,14 @@ export default function InventoryPage() {
 
   function handleSignOut() {
     signOut();
-    router.push('/');
+    router.push('/login');
   }
 
   if (authLoading || !user) return null;
 
   return (
     <div style={{ width: '100%', minHeight: '100vh', background: T.bg, color: T.ink, display: 'grid', gridTemplateColumns: '232px 1fr' }}>
-      <Sidebar user={user} onSignOut={handleSignOut} itemCount={items.length} />
+      <Sidebar user={user} onSignOut={handleSignOut} onChangeSheet={() => router.push('/sheets')} itemCount={items.length} />
 
       <main style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
         <Topbar query={query} setQuery={setQuery} />

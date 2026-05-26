@@ -5,10 +5,11 @@ import { Icon, type IconComponent } from '@/components/ui/Icon';
 interface SidebarProps {
   user: User;
   onSignOut: () => void;
+  onChangeSheet: () => void;
   itemCount: number;
 }
 
-export default function Sidebar({ user, onSignOut, itemCount }: SidebarProps) {
+export default function Sidebar({ user, onSignOut, onChangeSheet, itemCount }: SidebarProps) {
   return (
     <aside style={{
       background: T.panel, borderRight: `1px solid ${T.rule}`,
@@ -37,6 +38,20 @@ export default function Sidebar({ user, onSignOut, itemCount }: SidebarProps) {
 
       {/* User footer */}
       <div style={{ padding: 10, borderTop: `1px solid ${T.rule2}` }}>
+        <button
+          onClick={onChangeSheet}
+          style={{
+            width: '100%', display: 'flex', alignItems: 'center', gap: 8,
+            padding: '7px 10px', borderRadius: 6, marginBottom: 4,
+            background: 'transparent', border: 'none', cursor: 'pointer',
+            color: T.ink2, fontSize: 13, fontFamily: 'inherit', textAlign: 'left',
+          }}
+          onMouseEnter={(e) => { e.currentTarget.style.background = T.bg; }}
+          onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
+        >
+          <Icon.sheet s={14} />
+          Change sheet
+        </button>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '6px 6px' }}>
           <div style={{
             width: 30, height: 30, borderRadius: '50%', background: user.tone,
