@@ -219,6 +219,30 @@ function RequestAccessBtn({ onClick }: { onClick: () => void }) {
 }
 
 function RequestModal({ onClose }: { onClose: () => void }) {
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [message, setMessage] = useState('');
+  const [status, setStatus] = useState<'idle' | 'loading' | 'done' | 'error'>('idle');
+  const [errorMsg, setErrorMsg] = useState('');
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setStatus('loading');
+    try {
+      const res = await fetch('/api/request-access', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, email, message }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? 'Something went wrong.');
+      setStatus('done');
+    } catch (err: unknown) {
+      setErrorMsg(err instanceof Error ? err.message : 'Something went wrong.');
+      setStatus('error');
+    }
+  }
+
   return (
     <div
       style={{
@@ -240,7 +264,9 @@ function RequestModal({ onClose }: { onClose: () => void }) {
         }}>
           <div>
             <div style={{ fontSize: 17, fontWeight: 600, letterSpacing: '-.01em' }}>Request Access</div>
-            <div style={{ fontSize: 13, color: T.mute, marginTop: 4 }}>We&apos;ll review your request and get back to you.</div>
+            <div style={{ fontSize: 13, color: T.mute, marginTop: 4 }}>
+              {status === 'done' ? 'Your request was sent!' : "We'll review your request and get back to you."}
+            </div>
           </div>
           <button
             onClick={onClose}
@@ -253,55 +279,89 @@ function RequestModal({ onClose }: { onClose: () => void }) {
           </button>
         </div>
 
-        {/* Form */}
-        <div style={{ padding: '20px 24px 24px', display: 'flex', flexDirection: 'column', gap: 14 }}>
-          <label style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-            <span style={{ fontSize: 12.5, fontWeight: 500, color: T.ink2 }}>Name</span>
-            <input
-              placeholder="Your name"
+        {status === 'done' ? (
+          <div style={{ padding: '24px 24px 28px', textAlign: 'center' }}>
+            <div style={{ fontSize: 32, marginBottom: 10 }}>✓</div>
+            <div style={{ fontSize: 15, fontWeight: 500, marginBottom: 6 }}>Request received</div>
+            <div style={{ fontSize: 13.5, color: T.mute, marginBottom: 20 }}>
+              We&apos;ll reach out to <strong>{email}</strong> once your access is approved.
+            </div>
+            <button
+              onClick={onClose}
               style={{
-                height: 38, padding: '0 12px', borderRadius: 8, fontSize: 14,
-                border: `1px solid ${T.rule}`, background: T.bg, color: T.ink,
-                fontFamily: 'inherit', outline: 'none',
+                height: 38, padding: '0 20px', background: T.ink, color: '#fff',
+                border: 'none', borderRadius: 8, fontSize: 14, fontWeight: 500,
+                cursor: 'pointer', fontFamily: 'inherit',
               }}
-            />
-          </label>
-          <label style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-            <span style={{ fontSize: 12.5, fontWeight: 500, color: T.ink2 }}>Email</span>
-            <input
-              type="email"
-              placeholder="you@example.com"
+            >
+              Close
+            </button>
+          </div>
+        ) : (
+          <form onSubmit={handleSubmit} style={{ padding: '20px 24px 24px', display: 'flex', flexDirection: 'column', gap: 14 }}>
+            <label style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+              <span style={{ fontSize: 12.5, fontWeight: 500, color: T.ink2 }}>Name</span>
+              <input
+                required
+                placeholder="Your name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                style={{
+                  height: 38, padding: '0 12px', borderRadius: 8, fontSize: 14,
+                  border: `1px solid ${T.rule}`, background: T.bg, color: T.ink,
+                  fontFamily: 'inherit', outline: 'none',
+                }}
+              />
+            </label>
+            <label style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+              <span style={{ fontSize: 12.5, fontWeight: 500, color: T.ink2 }}>Email</span>
+              <input
+                required
+                type="email"
+                placeholder="you@example.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                style={{
+                  height: 38, padding: '0 12px', borderRadius: 8, fontSize: 14,
+                  border: `1px solid ${T.rule}`, background: T.bg, color: T.ink,
+                  fontFamily: 'inherit', outline: 'none',
+                }}
+              />
+            </label>
+            <label style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+              <span style={{ fontSize: 12.5, fontWeight: 500, color: T.ink2 }}>Tell us about your shop <span style={{ color: T.mute, fontWeight: 400 }}>(optional)</span></span>
+              <textarea
+                placeholder="What kind of inventory do you manage?"
+                rows={3}
+                value={message}
+                onChange={(e) => setMessage(e.target.value)}
+                style={{
+                  padding: '8px 12px', borderRadius: 8, fontSize: 14, resize: 'vertical',
+                  border: `1px solid ${T.rule}`, background: T.bg, color: T.ink,
+                  fontFamily: 'inherit', outline: 'none', lineHeight: 1.5,
+                }}
+              />
+            </label>
+            {status === 'error' && (
+              <div style={{ fontSize: 12.5, color: T.danger }}>{errorMsg}</div>
+            )}
+            <button
+              type="submit"
+              disabled={status === 'loading'}
               style={{
-                height: 38, padding: '0 12px', borderRadius: 8, fontSize: 14,
-                border: `1px solid ${T.rule}`, background: T.bg, color: T.ink,
-                fontFamily: 'inherit', outline: 'none',
+                marginTop: 4, height: 42, background: T.ink, color: '#fff',
+                border: 'none', borderRadius: 8, fontSize: 14, fontWeight: 500,
+                cursor: status === 'loading' ? 'default' : 'pointer',
+                fontFamily: 'inherit', transition: 'background .12s',
+                opacity: status === 'loading' ? 0.65 : 1,
               }}
-            />
-          </label>
-          <label style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-            <span style={{ fontSize: 12.5, fontWeight: 500, color: T.ink2 }}>Tell us about your shop <span style={{ color: T.mute, fontWeight: 400 }}>(optional)</span></span>
-            <textarea
-              placeholder="What kind of inventory do you manage?"
-              rows={3}
-              style={{
-                padding: '8px 12px', borderRadius: 8, fontSize: 14, resize: 'vertical',
-                border: `1px solid ${T.rule}`, background: T.bg, color: T.ink,
-                fontFamily: 'inherit', outline: 'none', lineHeight: 1.5,
-              }}
-            />
-          </label>
-          <button
-            style={{
-              marginTop: 4, height: 42, background: T.ink, color: '#fff',
-              border: 'none', borderRadius: 8, fontSize: 14, fontWeight: 500,
-              cursor: 'pointer', fontFamily: 'inherit', transition: 'background .12s',
-            }}
-            onMouseEnter={(e) => { e.currentTarget.style.background = '#1f2731'; }}
-            onMouseLeave={(e) => { e.currentTarget.style.background = T.ink; }}
-          >
-            Send Request
-          </button>
-        </div>
+              onMouseEnter={(e) => { if (status !== 'loading') e.currentTarget.style.background = '#1f2731'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = T.ink; }}
+            >
+              {status === 'loading' ? 'Sending…' : 'Send Request'}
+            </button>
+          </form>
+        )}
       </div>
     </div>
   );
