@@ -1,6 +1,5 @@
 import T from '@/lib/theme';
 import type { StatusFilter, SortOption } from '@/lib/types';
-import { CATEGORIES } from '@/lib/data';
 import Select from '@/components/ui/Select';
 
 interface FilterBarProps {
@@ -14,6 +13,7 @@ interface FilterBarProps {
   total: number;
   anyFilter: boolean;
   onClear: () => void;
+  categories: string[];
 }
 
 const STATUS_TABS: { id: StatusFilter; label: string }[] = [
@@ -25,7 +25,7 @@ const STATUS_TABS: { id: StatusFilter; label: string }[] = [
 
 export default function FilterBar({
   cat, setCat, statusFilter, setStatusFilter,
-  sort, setSort, count, total, anyFilter, onClear,
+  sort, setSort, count, total, anyFilter, onClear, categories,
 }: FilterBarProps) {
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
@@ -52,7 +52,7 @@ export default function FilterBar({
 
       <Select value={cat} onChange={(e) => setCat(e.target.value)}>
         <option value="all">All categories</option>
-        {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+        {categories.map(c => <option key={c} value={c}>{c}</option>)}
       </Select>
 
       <Select value={sort} onChange={(e) => setSort(e.target.value as SortOption)}>

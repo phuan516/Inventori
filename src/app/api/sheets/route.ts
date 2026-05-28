@@ -18,13 +18,14 @@ export async function GET() {
   const auth = makeAuth(session.accessToken);
   const drive = google.drive({ version: 'v3', auth });
   const res = await drive.files.list({
-    q: "mimeType='application/vnd.google-apps.spreadsheet' and trashed=false and name contains 'Inventori'",
+    q: "mimeType='application/vnd.google-apps.spreadsheet' and trashed=false",
     fields: 'files(id,name,modifiedTime,webViewLink)',
     orderBy: 'modifiedTime desc',
-    pageSize: 50,
+    pageSize: 200,
   });
 
-  return NextResponse.json({ sheets: res.data.files ?? [] });
+  const files = (res.data.files ?? []).filter(f => f.name?.includes('Inventori'));
+  return NextResponse.json({ sheets: files });
 }
 
 export async function POST(req: NextRequest) {

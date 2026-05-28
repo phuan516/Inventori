@@ -1,15 +1,28 @@
+'use client';
+
+import { useRouter, usePathname } from 'next/navigation';
+import { useNavigation } from '@/context/NavigationContext';
 import T from '@/lib/theme';
 import type { User } from '@/lib/types';
 import { Icon, type IconComponent } from '@/components/ui/Icon';
 
 interface SidebarProps {
-  user: User;
+  user: User | null;
   onSignOut: () => void;
   onChangeSheet: () => void;
-  itemCount: number;
+  itemCount?: number;
 }
 
-export default function Sidebar({ user, onSignOut, onChangeSheet, itemCount }: SidebarProps) {
+export default function Sidebar({ user, onSignOut, onChangeSheet, itemCount = 0 }: SidebarProps) {
+  const router = useRouter();
+  const pathname = usePathname();
+  const { startLoading } = useNavigation();
+
+  function navigate(to: string) {
+    if (to !== pathname) startLoading();
+    router.push(to);
+  }
+
   return (
     <aside style={{
       background: T.panel, borderRight: `1px solid ${T.rule}`,
@@ -31,9 +44,9 @@ export default function Sidebar({ user, onSignOut, onChangeSheet, itemCount }: S
 
       {/* Nav */}
       <nav style={{ padding: '12px 10px', display: 'flex', flexDirection: 'column', gap: 1, flex: 1 }}>
-        <NavItem icon={Icon.box}   label="Inventory" active count={itemCount} />
+        <NavItem icon={Icon.box}   label="Inventory" active={pathname === '/inventory'} onClick={() => navigate('/inventory')} count={itemCount} />
         <NavItem icon={Icon.chart} label="Reports"   disabled hint="Soon" />
-        <NavItem icon={Icon.cog}   label="Settings" />
+        <NavItem icon={Icon.cog}   label="Settings"  active={pathname === '/settings'}  onClick={() => navigate('/settings')} />
       </nav>
 
       {/* User footer */}
@@ -52,30 +65,40 @@ export default function Sidebar({ user, onSignOut, onChangeSheet, itemCount }: S
           <Icon.sheet s={14} />
           Change sheet
         </button>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '6px 6px' }}>
-          <div style={{
-            width: 30, height: 30, borderRadius: '50%', background: user.tone,
-            color: '#fff', display: 'grid', placeItems: 'center', fontSize: 12, fontWeight: 600, flexShrink: 0,
-          }}>
-            {user.initials}
-          </div>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: 13, fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-              {user.name}
+        {user ? (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '6px 6px' }}>
+            <div style={{
+              width: 30, height: 30, borderRadius: '50%', background: user.tone,
+              color: '#fff', display: 'grid', placeItems: 'center', fontSize: 12, fontWeight: 600, flexShrink: 0,
+            }}>
+              {user.initials}
             </div>
-            <div style={{ fontSize: 11, color: T.mute, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-              {user.email}
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 13, fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                {user.name}
+              </div>
+              <div style={{ fontSize: 11, color: T.mute, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                {user.email}
+              </div>
+            </div>
+            <button
+              onClick={onSignOut} title="Sign out"
+              style={{ background: 'transparent', border: 'none', color: T.mute, cursor: 'pointer', padding: 6, borderRadius: 6, display: 'grid', placeItems: 'center' }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = T.bg; e.currentTarget.style.color = T.ink; }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = T.mute; }}
+            >
+              <Icon.logout s={15} />
+            </button>
+          </div>
+        ) : (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '6px 6px' }}>
+            <div style={{ width: 30, height: 30, borderRadius: '50%', background: T.rule, flexShrink: 0 }} />
+            <div style={{ flex: 1 }}>
+              <div style={{ height: 11, width: '60%', borderRadius: 4, background: T.rule, marginBottom: 5 }} />
+              <div style={{ height: 9, width: '80%', borderRadius: 4, background: T.rule2 }} />
             </div>
           </div>
-          <button
-            onClick={onSignOut} title="Sign out"
-            style={{ background: 'transparent', border: 'none', color: T.mute, cursor: 'pointer', padding: 6, borderRadius: 6, display: 'grid', placeItems: 'center' }}
-            onMouseEnter={(e) => { e.currentTarget.style.background = T.bg; e.currentTarget.style.color = T.ink; }}
-            onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = T.mute; }}
-          >
-            <Icon.logout s={15} />
-          </button>
-        </div>
+        )}
       </div>
     </aside>
   );
@@ -88,17 +111,26 @@ interface NavItemProps {
   count?: number;
   disabled?: boolean;
   hint?: string;
+  onClick?: () => void;
 }
 
-function NavItem({ icon: I, label, active, count, disabled, hint }: NavItemProps) {
+function NavItem({ icon: I, label, active, count, disabled, hint, onClick }: NavItemProps) {
   return (
-    <div style={{
-      display: 'flex', alignItems: 'center', gap: 10, padding: '7px 10px', borderRadius: 6, fontSize: 13.5,
-      cursor: disabled ? 'default' : 'pointer',
-      color: disabled ? T.faint : active ? T.brand : T.ink2,
-      background: active ? T.brandSoft : 'transparent',
-      fontWeight: active ? 500 : 400,
-    }}>
+    <div
+      role={onClick && !disabled ? 'button' : undefined}
+      tabIndex={onClick && !disabled ? 0 : undefined}
+      onClick={!disabled ? onClick : undefined}
+      onKeyDown={onClick && !disabled ? (e) => e.key === 'Enter' && onClick() : undefined}
+      style={{
+        display: 'flex', alignItems: 'center', gap: 10, padding: '7px 10px', borderRadius: 6, fontSize: 13.5,
+        cursor: disabled ? 'default' : 'pointer',
+        color: disabled ? T.faint : active ? T.brand : T.ink2,
+        background: active ? T.brandSoft : 'transparent',
+        fontWeight: active ? 500 : 400,
+      }}
+      onMouseEnter={(e) => { if (!disabled && !active) e.currentTarget.style.background = T.bg; }}
+      onMouseLeave={(e) => { if (!active) e.currentTarget.style.background = 'transparent'; }}
+    >
       <I s={15} />
       <span style={{ flex: 1 }}>{label}</span>
       {count != null && (

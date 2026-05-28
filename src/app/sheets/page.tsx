@@ -1,10 +1,13 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import Logo from '@/components/Logo';
 import T from '@/lib/theme';
+
+let sheetsCache: { sheets: Sheet[]; ts: number } | null = null;
+const SHEETS_CACHE_TTL = 5 * 60 * 1000;
 
 interface Sheet {
   id: string;
@@ -19,11 +22,32 @@ export default function SheetsPage() {
   const [sheets, setSheets] = useState<Sheet[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
   const [creating, setCreating] = useState(false);
   const [createName, setCreateName] = useState('');
   const [createError, setCreateError] = useState<string | null>(null);
   const [showCreate, setShowCreate] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+
+  const loadSheets = useCallback(async (bust = false) => {
+    if (bust) sheetsCache = null;
+    if (sheetsCache && Date.now() - sheetsCache.ts < SHEETS_CACHE_TTL) {
+      setSheets(sheetsCache.sheets);
+      setLoading(false);
+      return;
+    }
+    try {
+      const data = await fetch('/api/sheets').then(r => r.json());
+      const loaded: Sheet[] = data.sheets ?? [];
+      sheetsCache = { sheets: loaded, ts: Date.now() };
+      setSheets(loaded);
+    } catch {
+      setError('Could not load your sheets. Try refreshing.');
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, []);
 
   useEffect(() => {
     if (authLoading) return;
@@ -31,17 +55,8 @@ export default function SheetsPage() {
       router.replace('/login');
       return;
     }
-    fetch('/api/sheets')
-      .then(r => r.json())
-      .then(data => {
-        setSheets(data.sheets ?? []);
-        setLoading(false);
-      })
-      .catch(() => {
-        setError('Could not load your sheets. Try refreshing.');
-        setLoading(false);
-      });
-  }, [user, authLoading, router]);
+    loadSheets();
+  }, [user, authLoading, router, loadSheets]);
 
   async function handleCreate() {
     const fullName = `Inventori - ${createName.trim()}`;
@@ -55,9 +70,8 @@ export default function SheetsPage() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? 'Failed to create sheet');
-      setSheets(prev => [data.sheet, ...prev]);
-      setShowCreate(false);
-      setCreateName('');
+      localStorage.setItem('inventori_sheet_id', data.sheet.id);
+      router.push('/inventory');
     } catch (e: unknown) {
       setCreateError(e instanceof Error ? e.message : 'Failed to create sheet');
     } finally {
@@ -116,18 +130,31 @@ export default function SheetsPage() {
               Only sheets named <strong>Inventori - …</strong> are shown.
             </p>
           </div>
-          <button
-            onClick={() => { setShowCreate(v => !v); setCreateError(null); }}
-            style={{
-              flexShrink: 0, marginTop: 4,
-              padding: '9px 16px', borderRadius: 8,
-              border: `1px solid ${T.brand}`,
-              background: T.brand, color: '#fff',
-              fontSize: 13.5, fontWeight: 500, cursor: 'pointer', fontFamily: 'inherit',
-            }}
-          >
-            + New sheet
-          </button>
+          <div style={{ display: 'flex', gap: 8, flexShrink: 0, marginTop: 4 }}>
+            <button
+              onClick={() => { setRefreshing(true); loadSheets(true); }}
+              disabled={refreshing || loading}
+              title="Refresh sheet list"
+              style={{
+                padding: '9px 13px', borderRadius: 8,
+                border: `1px solid ${T.rule}`, background: T.panel,
+                fontSize: 13.5, color: T.ink2, cursor: 'pointer', fontFamily: 'inherit',
+              }}
+            >
+              {refreshing ? '…' : '↻'}
+            </button>
+            <button
+              onClick={() => { setShowCreate(v => !v); setCreateError(null); }}
+              style={{
+                padding: '9px 16px', borderRadius: 8,
+                border: `1px solid ${T.brand}`,
+                background: T.brand, color: '#fff',
+                fontSize: 13.5, fontWeight: 500, cursor: 'pointer', fontFamily: 'inherit',
+              }}
+            >
+              + New sheet
+            </button>
+          </div>
         </div>
 
         {showCreate && (
@@ -157,7 +184,7 @@ export default function SheetsPage() {
                 }}
               />
               <button
-                onClick={handleCreate}
+                onClick={() => handleCreate()}
                 disabled={!createName.trim() || creating}
                 style={{
                   padding: '8px 16px', borderRadius: 7,
@@ -201,7 +228,11 @@ export default function SheetsPage() {
                 divider={i > 0}
                 selecting={selectedId === sheet.id}
                 dimmed={selectedId !== null && selectedId !== sheet.id}
-                onSelect={() => { setSelectedId(sheet.id); router.push('/inventory'); }}
+                onSelect={() => {
+                  localStorage.setItem('inventori_sheet_id', sheet.id);
+                  setSelectedId(sheet.id);
+                  router.push('/inventory');
+                }}
               />
             ))}
           </div>

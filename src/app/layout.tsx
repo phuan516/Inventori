@@ -1,6 +1,8 @@
 import type { Metadata } from 'next';
 import { Geist, Geist_Mono } from 'next/font/google';
 import { AuthProvider } from '@/context/AuthContext';
+import { SettingsProvider } from '@/context/SettingsContext';
+import { NavigationProvider } from '@/context/NavigationContext';
 import './globals.css';
 
 const geistSans = Geist({
@@ -27,7 +29,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         suppressHydrationWarning
       >
         <AuthProvider>
-          {children}
+          <SettingsProvider>
+            <NavigationProvider>
+              {children}
+            </NavigationProvider>
+          </SettingsProvider>
         </AuthProvider>
       </body>
     </html>

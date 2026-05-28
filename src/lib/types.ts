@@ -10,7 +10,7 @@ export interface Product {
   id: string;
   sku: string;
   name: string;
-  cat: Category;
+  cat: string;
   grade: Grade;
   mfr: string;
   series: string;
@@ -19,6 +19,7 @@ export interface Product {
   price: number;
   cost: number;
   hue: number;
+  barcode: string;
 }
 
 export interface User {

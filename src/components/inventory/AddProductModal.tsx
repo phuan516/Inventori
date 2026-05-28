@@ -3,12 +3,12 @@
 import { useState, useEffect } from 'react';
 import T from '@/lib/theme';
 import type { Product } from '@/lib/types';
-import { CATEGORIES, GRADES } from '@/lib/data';
+import { useSettings } from '@/context/SettingsContext';
 import { Icon } from '@/components/ui/Icon';
 import Btn from '@/components/ui/Btn';
 import Field from '@/components/ui/Field';
 import Input from '@/components/ui/Input';
-import Select from '@/components/ui/Select';
+import ComboInput from '@/components/ui/ComboInput';
 
 type FormState = Omit<Product, 'id'>;
 
@@ -18,9 +18,10 @@ interface AddProductModalProps {
 }
 
 export default function AddProductModal({ onClose, onAdd }: AddProductModalProps) {
+  const { settings } = useSettings();
   const [f, setF] = useState<FormState>({
-    name: '', sku: '', cat: 'Gunpla', grade: 'HG',
-    mfr: '', series: '', stock: 1, low: 3, price: 0, cost: 0, hue: 200,
+    name: '', sku: '', cat: '', grade: '—',
+    mfr: '', series: '', stock: 1, low: 3, price: 0, cost: 0, hue: 200, barcode: '',
   });
   const [errors, setErrors] = useState<Partial<Record<keyof FormState, string>>>({});
 
@@ -92,25 +93,40 @@ export default function AddProductModal({ onClose, onAdd }: AddProductModalProps
           </Field>
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-            <Field label="SKU / Barcode" error={errors.sku} hint="Scan or type manually">
+            <Field label="SKU" error={errors.sku}>
               <Input value={f.sku} onChange={(e) => set('sku', e.target.value.toUpperCase())}
                 placeholder="BAN-2607193" style={{ fontFamily: T.fontMono }} />
             </Field>
+            <Field label="Barcode" hint="Scan or type manually">
+              <Input value={f.barcode} onChange={(e) => set('barcode', e.target.value)}
+                placeholder="e.g. 4573102620767" style={{ fontFamily: T.fontMono }} />
+            </Field>
             <Field label="Category">
-              <Select value={f.cat} onChange={(e) => set('cat', e.target.value as Product['cat'])} style={{ width: '100%' }}>
-                {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
-              </Select>
+              <ComboInput
+                listId="modal-categories"
+                options={settings.categories}
+                value={f.cat}
+                onChange={(e) => set('cat', e.target.value)}
+                placeholder="e.g. Gunpla"
+              />
             </Field>
             <Field label="Manufacturer">
-              <Input value={f.mfr} onChange={(e) => set('mfr', e.target.value)} placeholder="Bandai" />
+              <ComboInput
+                listId="modal-manufacturers"
+                options={settings.manufacturers}
+                value={f.mfr}
+                onChange={(e) => set('mfr', e.target.value)}
+                placeholder="e.g. Bandai"
+              />
             </Field>
             <Field label="Series">
-              <Input value={f.series} onChange={(e) => set('series', e.target.value)} placeholder="Wing" />
-            </Field>
-            <Field label="Grade">
-              <Select value={f.grade} onChange={(e) => set('grade', e.target.value as Product['grade'])} style={{ width: '100%' }}>
-                {GRADES.map(g => <option key={g} value={g}>{g}</option>)}
-              </Select>
+              <ComboInput
+                listId="modal-series"
+                options={settings.series}
+                value={f.series}
+                onChange={(e) => set('series', e.target.value)}
+                placeholder="e.g. Wing"
+              />
             </Field>
             <Field label="Initial stock">
               <Input type="number" value={f.stock} onChange={(e) => set('stock', parseInt(e.target.value) || 0)} />

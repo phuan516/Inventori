@@ -72,6 +72,25 @@ a {
   to { transform: rotate(360deg); }
 }
 
+/* ── Navigation progress bar ── */
+
+.nav-bar-fill {
+  animation: navFill 900ms ease-out forwards;
+}
+@keyframes navFill {
+  from { transform: scaleX(0); }
+  to   { transform: scaleX(0.8); }
+}
+
+.nav-bar-done {
+  animation: navDone 380ms ease-out forwards;
+}
+@keyframes navDone {
+  0%   { transform: scaleX(0.8); opacity: 1; }
+  60%  { transform: scaleX(1);   opacity: 1; }
+  100% { transform: scaleX(1);   opacity: 0; }
+}
+
 /* ── Utility ── */
 
 .inv-row:hover {

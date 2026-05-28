@@ -3,14 +3,15 @@
 import { useState, useEffect } from 'react';
 import T from '@/lib/theme';
 import type { Product } from '@/lib/types';
-import { statusOf, GRADES, CATEGORIES } from '@/lib/data';
+import { statusOf } from '@/lib/data';
+import { useSettings } from '@/context/SettingsContext';
 import { Icon } from '@/components/ui/Icon';
 import Pill from '@/components/ui/Pill';
 import Btn from '@/components/ui/Btn';
 import Panel from '@/components/ui/Panel';
 import Field from '@/components/ui/Field';
 import Input from '@/components/ui/Input';
-import Select from '@/components/ui/Select';
+import ComboInput from '@/components/ui/ComboInput';
 import ImgPlaceholder from '@/components/ui/ImgPlaceholder';
 
 interface DrawerProps {
@@ -24,6 +25,7 @@ interface DrawerProps {
 
 export default function ProductDrawer({ item, onClose, onChange, onDelete, onInc, onDec }: DrawerProps) {
   const st = statusOf(item);
+  const { settings } = useSettings();
   const [confirming, setConfirming] = useState(false);
 
   useEffect(() => {
@@ -76,7 +78,6 @@ export default function ProductDrawer({ item, onClose, onChange, onDelete, onInc
                   {st === 'out' ? 'Out of stock' : st === 'low' ? 'Low stock' : 'In stock'}
                 </Pill>
                 <Pill tone="mute">{item.cat}</Pill>
-                {item.grade !== '—' && <Pill tone="brand">{item.grade}</Pill>}
               </div>
             </div>
           </div>
@@ -104,6 +105,13 @@ export default function ProductDrawer({ item, onClose, onChange, onDelete, onInc
 
           {/* Editable fields */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <Field label="Name" style={{ gridColumn: '1 / -1' }}>
+              <Input value={item.name} onChange={(e) => onChange({ name: e.target.value })} style={{ width: '100%' }} />
+            </Field>
+            <Field label="Barcode" style={{ gridColumn: '1 / -1' }}>
+              <Input value={item.barcode} onChange={(e) => onChange({ barcode: e.target.value })}
+                placeholder="e.g. 4573102620767" style={{ width: '100%', fontFamily: T.fontMono }} />
+            </Field>
             <Field label="Selling price">
               <Input type="number" step="0.01" value={item.price}
                 onChange={(e) => onChange({ price: parseFloat(e.target.value) || 0 })} />
@@ -116,21 +124,30 @@ export default function ProductDrawer({ item, onClose, onChange, onDelete, onInc
               <Input type="number" value={item.low}
                 onChange={(e) => onChange({ low: parseInt(e.target.value) || 0 })} />
             </Field>
-            <Field label="Grade">
-              <Select value={item.grade} onChange={(e) => onChange({ grade: e.target.value as Product['grade'] })} style={{ width: '100%' }}>
-                {GRADES.map(g => <option key={g} value={g}>{g}</option>)}
-              </Select>
-            </Field>
             <Field label="Category" style={{ gridColumn: '1 / -1' }}>
-              <Select value={item.cat} onChange={(e) => onChange({ cat: e.target.value as Product['cat'] })} style={{ width: '100%' }}>
-                {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
-              </Select>
+              <ComboInput
+                listId="drawer-categories"
+                options={settings.categories}
+                value={item.cat}
+                onChange={(e) => onChange({ cat: e.target.value })}
+                style={{ width: '100%' }}
+              />
             </Field>
             <Field label="Manufacturer">
-              <Input value={item.mfr} onChange={(e) => onChange({ mfr: e.target.value })} />
+              <ComboInput
+                listId="drawer-manufacturers"
+                options={settings.manufacturers}
+                value={item.mfr}
+                onChange={(e) => onChange({ mfr: e.target.value })}
+              />
             </Field>
             <Field label="Series">
-              <Input value={item.series} onChange={(e) => onChange({ series: e.target.value })} />
+              <ComboInput
+                listId="drawer-series"
+                options={settings.series}
+                value={item.series}
+                onChange={(e) => onChange({ series: e.target.value })}
+              />
             </Field>
           </div>
 

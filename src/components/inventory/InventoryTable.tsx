@@ -13,7 +13,6 @@ const COLS = [
   { w: '60px',  label: '' },
   { w: '1fr',   label: 'Product' },
   { w: '110px', label: 'Category' },
-  { w: '60px',  label: 'Grade' },
   { w: '110px', label: 'Stock' },
   { w: '110px', label: 'Status' },
   { w: '90px',  label: 'Price', align: 'right' as const },
@@ -74,12 +73,6 @@ export function Row({ p, onSelect, onInc, onDec }: RowProps) {
 
       <span style={{ fontSize: 12.5, color: T.ink2 }}>{p.cat}</span>
 
-      <span style={{
-        fontSize: 11, fontFamily: T.fontMono, fontWeight: 600,
-        color: p.grade === '—' ? T.faint : T.ink,
-        border: `1px solid ${T.rule}`, padding: '2px 6px', borderRadius: 4, justifySelf: 'start',
-      }}>{p.grade}</span>
-
       {/* Stock stepper — stopPropagation so row click doesn't fire */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 4 }} onClick={(e) => e.stopPropagation()}>
         <Stepper icon={<Icon.minus s={11} />} onClick={onDec} disabled={p.stock === 0} />
@@ -118,6 +111,32 @@ function Stepper({ icon, onClick, disabled }: { icon: ReactNode; onClick: () => 
     >
       {icon}
     </button>
+  );
+}
+
+export function SkeletonRows({ count = 8 }: { count?: number }) {
+  return (
+    <>
+      {Array.from({ length: count }).map((_, i) => (
+        <div key={i} style={{
+          display: 'grid', gridTemplateColumns: GRID, gap: 14,
+          padding: '12px 18px', alignItems: 'center',
+          borderBottom: `1px solid ${T.rule2}`,
+          opacity: 1 - i * 0.08,
+        }}>
+          <div style={{ width: 44, height: 44, borderRadius: 6, background: T.rule2 }} />
+          <div>
+            <div style={{ height: 13, width: '55%', borderRadius: 4, background: T.rule2, marginBottom: 7 }} />
+            <div style={{ height: 10, width: '35%', borderRadius: 4, background: T.rule2 }} />
+          </div>
+          <div style={{ height: 11, width: 64, borderRadius: 4, background: T.rule2 }} />
+          <div style={{ height: 11, width: 40, borderRadius: 4, background: T.rule2 }} />
+          <div style={{ height: 20, width: 72, borderRadius: 100, background: T.rule2 }} />
+          <div style={{ height: 11, width: 48, borderRadius: 4, background: T.rule2, marginLeft: 'auto' }} />
+          <div />
+        </div>
+      ))}
+    </>
   );
 }
 
