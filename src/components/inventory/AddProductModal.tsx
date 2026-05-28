@@ -54,7 +54,6 @@ export default function AddProductModal({ onClose, onAdd }: AddProductModalProps
   return (
     <div
       className="inv-fade-in"
-      onClick={onClose}
       style={{
         position: 'fixed', inset: 0, zIndex: 80,
         background: 'rgba(15,20,25,.42)', backdropFilter: 'blur(4px)',

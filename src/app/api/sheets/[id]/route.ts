@@ -5,7 +5,7 @@ import { unstable_cache, revalidateTag } from 'next/cache';
 import { NextRequest, NextResponse } from 'next/server';
 import type { Product } from '@/lib/types';
 
-const SHEET = 'Sheet1';
+const SHEET = 'Products';
 
 function makeAuth(accessToken: string) {
   const auth = new google.auth.OAuth2();
@@ -147,9 +147,11 @@ export async function DELETE(req: NextRequest, ctx: Ctx) {
 
   const spreadsheet = await sheets.spreadsheets.get({
     spreadsheetId: id,
-    fields: 'sheets/properties/sheetId',
+    fields: 'sheets/properties',
   });
-  const sheetId = spreadsheet.data.sheets?.[0]?.properties?.sheetId ?? 0;
+  const sheetId = spreadsheet.data.sheets?.find(
+    s => s.properties?.title === SHEET
+  )?.properties?.sheetId ?? 0;
 
   await sheets.spreadsheets.batchUpdate({
     spreadsheetId: id,

@@ -227,9 +227,7 @@ export default function InventoryPage() {
               <h1 style={{ margin: 0, fontSize: 24, fontWeight: 600, letterSpacing: '-.02em' }}>Inventory</h1>
             </div>
             <div style={{ display: 'flex', gap: 8 }}>
-              <Btn kind="ghost" icon={<Icon.scan s={14} />}>Scan barcode</Btn>
-              <Btn kind="ghost">Export CSV</Btn>
-              <Btn kind="primary" icon={<Icon.plus s={13} />} onClick={() => setAdding(true)}>Add product</Btn>
+<Btn kind="primary" icon={<Icon.plus s={13} />} onClick={() => setAdding(true)}>Add product</Btn>
             </div>
           </div>
 

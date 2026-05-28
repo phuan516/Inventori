@@ -60,6 +60,10 @@ export default function SheetsPage() {
 
   async function handleCreate() {
     const fullName = `Inventori - ${createName.trim()}`;
+    if (sheets.some(s => s.name === fullName)) {
+      setCreateError('A sheet with that name already exists');
+      return;
+    }
     setCreating(true);
     setCreateError(null);
     try {
