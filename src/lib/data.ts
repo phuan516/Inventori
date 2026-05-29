@@ -3,7 +3,7 @@ import type { Category, Grade, Product, StatusType } from './types';
 export const CATEGORIES: Category[] = ['Gunpla', 'Scale Models', 'Figures', 'Accessories', 'Tools'];
 export const GRADES: Grade[] = ['HG', 'RG', 'MG', 'PG', 'SD', '—'];
 
-export const SEED: Product[] = [
+export const SEED = [
   { id: 'p01', sku: 'BAN-2554145', name: 'RG Nu Gundam Ver.Ka',         cat: 'Gunpla',       grade: 'RG', mfr: 'Bandai',     series: "Char's Counterattack", stock: 2,  low: 3, price: 89.99,  cost: 52.00,  hue: 215, barcode: '' },
   { id: 'p02', sku: 'BAN-2587319', name: 'MG Barbatos Lupus Rex',        cat: 'Gunpla',       grade: 'MG', mfr: 'Bandai',     series: 'Iron-Blooded Orphans', stock: 0,  low: 2, price: 64.99,  cost: 38.50,  hue: 25,  barcode: '' },
   { id: 'p03', sku: 'GSC-G94821',  name: 'Nendoroid Frieren',            cat: 'Figures',      grade: '—',  mfr: 'Good Smile', series: 'Frieren',              stock: 14, low: 4, price: 74.99,  cost: 41.00,  hue: 95,  barcode: '' },

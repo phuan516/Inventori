@@ -18,6 +18,7 @@ export const Icon = {
   arrowLeft: ({ s = 16 }: P) => <svg width={s} height={s} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M13 8H3M7 4 3 8l4 4"/></svg>,
   logout:    ({ s = 16 }: P) => <svg width={s} height={s} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"><path d="M9 2H3v12h6M11 5l3 3-3 3M14 8H6"/></svg>,
   sheet:     ({ s = 16 }: P) => <svg width={s} height={s} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="2" width="12" height="12" rx="1.5"/><path d="M2 6h12M6 6v8"/></svg>,
+  inbox:     ({ s = 16 }: P) => <svg width={s} height={s} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round"><path d="M2 9.5 4 3h8l2 6.5V13H2zM2 9.5h3.5l1 2h3l1-2H14"/></svg>,
 };
 
 import type { ReactElement } from 'react';

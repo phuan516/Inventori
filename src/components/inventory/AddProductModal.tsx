@@ -20,8 +20,8 @@ interface AddProductModalProps {
 export default function AddProductModal({ onClose, onAdd }: AddProductModalProps) {
   const { settings } = useSettings();
   const [f, setF] = useState<FormState>({
-    name: '', sku: '', cat: '', grade: '—',
-    mfr: '', series: '', stock: 1, low: 3, price: 0, cost: 0, hue: 200, barcode: '',
+    name: '', sku: '', cat: '',
+    mfr: '', series: '', stock: 1, low: 0, price: 0, cost: 0, hue: 200, barcode: '',
   });
   const [errors, setErrors] = useState<Partial<Record<keyof FormState, string>>>({});
 

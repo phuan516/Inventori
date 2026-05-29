@@ -18,15 +18,34 @@ export async function GET() {
 
   const auth = makeAuth(session.accessToken);
   const drive = google.drive({ version: 'v3', auth });
-  const res = await drive.files.list({
-    q: "mimeType='application/vnd.google-apps.spreadsheet' and trashed=false",
-    fields: 'files(id,name,modifiedTime,webViewLink)',
+
+  const foldersRes = await drive.files.list({
+    q: "mimeType='application/vnd.google-apps.folder' and name contains 'Inventori' and trashed=false",
+    fields: 'files(id,name,modifiedTime)',
     orderBy: 'modifiedTime desc',
-    pageSize: 200,
+    pageSize: 100,
   });
 
-  const files = (res.data.files ?? []).filter(f => f.name?.includes('Inventori'));
-  return NextResponse.json({ sheets: files });
+  const folders = foldersRes.data.files ?? [];
+
+  const stores = await Promise.all(
+    folders.map(async (folder) => {
+      const sheetsRes = await drive.files.list({
+        q: `mimeType='application/vnd.google-apps.spreadsheet' and '${folder.id}' in parents and trashed=false`,
+        fields: 'files(id,modifiedTime)',
+        pageSize: 1,
+      });
+      const sheet = sheetsRes.data.files?.[0];
+      return {
+        id: folder.id,
+        sheetId: sheet?.id ?? null,
+        name: folder.name,
+        modifiedTime: folder.modifiedTime,
+      };
+    })
+  );
+
+  return NextResponse.json({ stores: stores.filter(s => s.sheetId !== null) });
 }
 
 export async function POST(req: NextRequest) {
@@ -41,15 +60,36 @@ export async function POST(req: NextRequest) {
   }
 
   const auth = makeAuth(session.accessToken);
+  const drive = google.drive({ version: 'v3', auth });
   const sheetsApi = google.sheets({ version: 'v4', auth });
-  const res = await sheetsApi.spreadsheets.create({
-    requestBody: { properties: { title: name } },
+
+  // 1. Create store folder
+  const folderRes = await drive.files.create({
+    requestBody: {
+      name,
+      mimeType: 'application/vnd.google-apps.folder',
+    },
+    fields: 'id,name,modifiedTime',
+  });
+  const folderId = folderRes.data.id!;
+
+  // 2. Create inventory spreadsheet
+  const spreadsheetRes = await sheetsApi.spreadsheets.create({
+    requestBody: { properties: { title: 'Inventory' } },
     fields: 'spreadsheetId,sheets/properties/sheetId',
   });
+  const spreadsheetId = spreadsheetRes.data.spreadsheetId!;
+  const defaultSheetId = spreadsheetRes.data.sheets?.[0]?.properties?.sheetId ?? 0;
 
-  const spreadsheetId = res.data.spreadsheetId!;
-  const defaultSheetId = res.data.sheets?.[0]?.properties?.sheetId ?? 0;
+  // Move spreadsheet into store folder
+  await drive.files.update({
+    fileId: spreadsheetId,
+    addParents: folderId,
+    removeParents: 'root',
+    fields: 'id,parents',
+  });
 
+  // 3. Set up Products and Settings tabs
   await sheetsApi.spreadsheets.batchUpdate({
     spreadsheetId,
     requestBody: {
@@ -67,8 +107,8 @@ export async function POST(req: NextRequest) {
       valueInputOption: 'RAW',
       data: [
         {
-          range: 'Products!A1:M1',
-          values: [['ID', 'SKU', 'Name', 'Category', 'Grade', 'Manufacturer', 'Series', 'Stock', 'Low Stock', 'Price', 'Cost', 'Hue', 'Barcode']],
+          range: 'Products!A1:L1',
+          values: [['ID', 'SKU', 'Name', 'Category', 'Manufacturer', 'Series', 'Stock', 'Low Stock', 'Price', 'Cost', 'Hue', 'Barcode']],
         },
         {
           range: 'Settings!A1:B4',
@@ -83,11 +123,20 @@ export async function POST(req: NextRequest) {
     },
   });
 
-  const drive = google.drive({ version: 'v3', auth });
-  const file = await drive.files.get({
-    fileId: spreadsheetId,
-    fields: 'id,name,modifiedTime,webViewLink',
+  // 4. Create Intake Records subfolder
+  await drive.files.create({
+    requestBody: {
+      name: 'Intake Records',
+      mimeType: 'application/vnd.google-apps.folder',
+      parents: [folderId],
+    },
+    fields: 'id',
   });
 
-  return NextResponse.json({ sheet: file.data }, { status: 201 });
+  return NextResponse.json({
+    folderId,
+    sheetId: spreadsheetId,
+    name: folderRes.data.name,
+    modifiedTime: folderRes.data.modifiedTime,
+  }, { status: 201 });
 }

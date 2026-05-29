@@ -6,20 +6,20 @@ import { useAuth } from '@/context/AuthContext';
 import Logo from '@/components/Logo';
 import T from '@/lib/theme';
 
-let sheetsCache: { sheets: Sheet[]; ts: number } | null = null;
-const SHEETS_CACHE_TTL = 5 * 60 * 1000;
+let storesCache: { stores: Store[]; ts: number } | null = null;
+const STORES_CACHE_TTL = 5 * 60 * 1000;
 
-interface Sheet {
+interface Store {
   id: string;
+  sheetId: string;
   name: string;
   modifiedTime: string;
-  webViewLink?: string;
 }
 
 export default function SheetsPage() {
   const { user, loading: authLoading, signOut } = useAuth();
   const router = useRouter();
-  const [sheets, setSheets] = useState<Sheet[]>([]);
+  const [stores, setStores] = useState<Store[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
@@ -29,20 +29,20 @@ export default function SheetsPage() {
   const [showCreate, setShowCreate] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
-  const loadSheets = useCallback(async (bust = false) => {
-    if (bust) sheetsCache = null;
-    if (sheetsCache && Date.now() - sheetsCache.ts < SHEETS_CACHE_TTL) {
-      setSheets(sheetsCache.sheets);
+  const loadStores = useCallback(async (bust = false) => {
+    if (bust) storesCache = null;
+    if (storesCache && Date.now() - storesCache.ts < STORES_CACHE_TTL) {
+      setStores(storesCache.stores);
       setLoading(false);
       return;
     }
     try {
       const data = await fetch('/api/sheets').then(r => r.json());
-      const loaded: Sheet[] = data.sheets ?? [];
-      sheetsCache = { sheets: loaded, ts: Date.now() };
-      setSheets(loaded);
+      const loaded: Store[] = data.stores ?? [];
+      storesCache = { stores: loaded, ts: Date.now() };
+      setStores(loaded);
     } catch {
-      setError('Could not load your sheets. Try refreshing.');
+      setError('Could not load your stores. Try refreshing.');
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -55,13 +55,13 @@ export default function SheetsPage() {
       router.replace('/login');
       return;
     }
-    loadSheets();
-  }, [user, authLoading, router, loadSheets]);
+    loadStores();
+  }, [user, authLoading, router, loadStores]);
 
   async function handleCreate() {
     const fullName = `Inventori - ${createName.trim()}`;
-    if (sheets.some(s => s.name === fullName)) {
-      setCreateError('A sheet with that name already exists');
+    if (stores.some(s => s.name === fullName)) {
+      setCreateError('A store with that name already exists');
       return;
     }
     setCreating(true);
@@ -73,12 +73,13 @@ export default function SheetsPage() {
         body: JSON.stringify({ name: fullName }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? 'Failed to create sheet');
-      localStorage.setItem('inventori_sheet_id', data.sheet.id);
-      localStorage.setItem('inventori_sheet_name', data.sheet.name ?? fullName);
+      if (!res.ok) throw new Error(data.error ?? 'Failed to create store');
+      localStorage.setItem('inventori_store_id', data.folderId);
+      localStorage.setItem('inventori_sheet_id', data.sheetId);
+      localStorage.setItem('inventori_sheet_name', data.name ?? fullName);
       router.push('/inventory');
     } catch (e: unknown) {
-      setCreateError(e instanceof Error ? e.message : 'Failed to create sheet');
+      setCreateError(e instanceof Error ? e.message : 'Failed to create store');
     } finally {
       setCreating(false);
     }
@@ -129,17 +130,17 @@ export default function SheetsPage() {
         <div style={{ marginBottom: 32, display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16 }}>
           <div>
             <h1 style={{ margin: 0, fontSize: 28, fontWeight: 600, letterSpacing: '-.02em' }}>
-              Choose a Sheet
+              Choose a Store
             </h1>
             <p style={{ margin: '8px 0 0', fontSize: 14.5, color: T.ink2, lineHeight: 1.55 }}>
-              Only sheets named <strong>Inventori - …</strong> are shown.
+              Only stores named <strong>Inventori - …</strong> are shown.
             </p>
           </div>
           <div style={{ display: 'flex', gap: 8, flexShrink: 0, marginTop: 4 }}>
             <button
-              onClick={() => { setRefreshing(true); loadSheets(true); }}
+              onClick={() => { setRefreshing(true); loadStores(true); }}
               disabled={refreshing || loading}
-              title="Refresh sheet list"
+              title="Refresh store list"
               style={{
                 padding: '9px 13px', borderRadius: 8,
                 border: `1px solid ${T.rule}`, background: T.panel,
@@ -157,7 +158,7 @@ export default function SheetsPage() {
                 fontSize: 13.5, fontWeight: 500, cursor: 'pointer', fontFamily: 'inherit',
               }}
             >
-              + New sheet
+              + New store
             </button>
           </div>
         </div>
@@ -167,7 +168,7 @@ export default function SheetsPage() {
             marginBottom: 20, padding: '16px 18px', borderRadius: 10,
             background: T.panel, border: `1px solid ${T.rule}`,
           }}>
-            <div style={{ fontSize: 13, fontWeight: 500, marginBottom: 10 }}>Create a new Inventori sheet</div>
+            <div style={{ fontSize: 13, fontWeight: 500, marginBottom: 10 }}>Create a new Inventori store</div>
             <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
               <span style={{
                 padding: '8px 12px', borderRadius: 7,
@@ -181,7 +182,7 @@ export default function SheetsPage() {
                 value={createName}
                 onChange={e => setCreateName(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && createName.trim() && handleCreate()}
-                placeholder="Sheet name"
+                placeholder="Store name"
                 style={{
                   flex: 1, padding: '8px 12px', borderRadius: 7,
                   border: `1px solid ${T.rule}`, background: T.bg,
@@ -220,23 +221,24 @@ export default function SheetsPage() {
           </div>
         )}
 
-        {!loading && !error && sheets.length === 0 && <EmptyState />}
+        {!loading && !error && stores.length === 0 && <EmptyState />}
 
-        {!loading && !error && sheets.length > 0 && (
+        {!loading && !error && stores.length > 0 && (
           <div style={{
             background: T.panel, border: `1px solid ${T.rule}`, borderRadius: 12, overflow: 'hidden',
           }}>
-            {sheets.map((sheet, i) => (
-              <SheetRow
-                key={sheet.id}
-                sheet={sheet}
+            {stores.map((store, i) => (
+              <StoreRow
+                key={store.id}
+                store={store}
                 divider={i > 0}
-                selecting={selectedId === sheet.id}
-                dimmed={selectedId !== null && selectedId !== sheet.id}
+                selecting={selectedId === store.id}
+                dimmed={selectedId !== null && selectedId !== store.id}
                 onSelect={() => {
-                  localStorage.setItem('inventori_sheet_id', sheet.id);
-                  localStorage.setItem('inventori_sheet_name', sheet.name ?? '');
-                  setSelectedId(sheet.id);
+                  localStorage.setItem('inventori_store_id', store.id);
+                  localStorage.setItem('inventori_sheet_id', store.sheetId);
+                  localStorage.setItem('inventori_sheet_name', store.name ?? '');
+                  setSelectedId(store.id);
                   router.push('/inventory');
                 }}
               />
@@ -248,14 +250,14 @@ export default function SheetsPage() {
   );
 }
 
-/* ── Sheet row ── */
+/* ── Store row ── */
 
-function SheetRow({ sheet, divider, selecting, dimmed, onSelect }: {
-  sheet: Sheet; divider: boolean; selecting: boolean; dimmed: boolean; onSelect: () => void;
+function StoreRow({ store, divider, selecting, dimmed, onSelect }: {
+  store: Store; divider: boolean; selecting: boolean; dimmed: boolean; onSelect: () => void;
 }) {
   const [hover, setHover] = useState(false);
-  const date = sheet.modifiedTime
-    ? new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric' }).format(new Date(sheet.modifiedTime))
+  const date = store.modifiedTime
+    ? new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric' }).format(new Date(store.modifiedTime))
     : '—';
 
   return (
@@ -276,10 +278,10 @@ function SheetRow({ sheet, divider, selecting, dimmed, onSelect }: {
         opacity: dimmed ? 0.4 : 1,
       }}
     >
-      <SheetIcon />
+      <FolderIcon />
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ fontSize: 14.5, fontWeight: 500, color: T.ink, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-          {sheet.name}
+          {store.name}
         </div>
         <div style={{ fontSize: 12, color: selecting ? T.brand : T.mute, marginTop: 2 }}>
           {selecting ? 'Opening…' : `Modified ${date}`}
@@ -319,10 +321,10 @@ function EmptyState() {
       textAlign: 'center', padding: '56px 32px',
       background: T.panel, border: `1px solid ${T.rule}`, borderRadius: 12,
     }}>
-      <SheetIcon size={40} />
-      <div style={{ marginTop: 14, fontSize: 16, fontWeight: 600 }}>No Inventori sheets found</div>
+      <FolderIcon size={40} />
+      <div style={{ marginTop: 14, fontSize: 16, fontWeight: 600 }}>No Inventori stores found</div>
       <div style={{ marginTop: 6, fontSize: 13.5, color: T.mute, maxWidth: 360, margin: '6px auto 0', lineHeight: 1.55 }}>
-        Click <strong>+ New sheet</strong> above to create your first Inventori sheet.
+        Click <strong>+ New store</strong> above to create your first Inventori store.
       </div>
     </div>
   );
@@ -330,14 +332,11 @@ function EmptyState() {
 
 /* ── Icons ── */
 
-function SheetIcon({ size = 32 }: { size?: number }) {
+function FolderIcon({ size = 32 }: { size?: number }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 32 32" style={{ flexShrink: 0 }}>
-      <rect width="32" height="32" rx="6" fill="#0F9D58" />
-      <rect x="7" y="9"  width="18" height="3" rx="1" fill="#fff" opacity=".95" />
-      <rect x="7" y="14" width="18" height="3" rx="1" fill="#fff" opacity=".95" />
-      <rect x="7" y="19" width="12" height="3" rx="1" fill="#fff" opacity=".95" />
-      <rect x="15" y="8" width="2"  height="16" rx="1" fill="#0F9D58" />
+    <svg width={size} height={size} viewBox="0 0 32 32" fill="none" style={{ flexShrink: 0 }}>
+      <rect width="32" height="32" rx="6" fill="#F4B400" />
+      <path d="M6 12a2 2 0 0 1 2-2h5l2 2h9a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V12z" fill="#fff" opacity=".9" />
     </svg>
   );
 }

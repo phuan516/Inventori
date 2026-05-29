@@ -39,7 +39,7 @@ export default function Sidebar({ user, onSignOut, onChangeSheet, activeTab, onT
       {/* Nav */}
       <nav style={{ padding: '12px 10px', display: 'flex', flexDirection: 'column', gap: 1, flex: 1 }}>
         <NavItem icon={Icon.box}   label="Inventory" active={activeTab === 'inventory'} onClick={() => onTabChange('inventory')} count={itemCount} />
-        <NavItem icon={Icon.sheet} label="Intake"    active={activeTab === 'intake'}    onClick={() => onTabChange('intake')} />
+        <NavItem icon={Icon.inbox} label="Intake"    active={activeTab === 'intake'}    onClick={() => onTabChange('intake')} />
         <NavItem icon={Icon.chart} label="Reports"   disabled hint="Soon" />
         <NavItem icon={Icon.cog}   label="Settings"  active={activeTab === 'settings'}  onClick={() => onTabChange('settings')} />
       </nav>

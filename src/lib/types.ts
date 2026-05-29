@@ -11,7 +11,6 @@ export interface Product {
   sku: string;
   name: string;
   cat: string;
-  grade: Grade;
   mfr: string;
   series: string;
   stock: number;

@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useCallback } from 'react';
 import { SEED } from '@/lib/data';
-import { SCAN_QUEUE, matchedLine, pendingLine, seedLines, type IntakeLine } from '@/lib/intakeData';
+import { SCAN_QUEUE, matchedLine, pendingLine, type IntakeLine } from '@/lib/intakeData';
 
 export interface IntakeSummary {
   skus: number;
@@ -12,8 +12,8 @@ export interface IntakeSummary {
   matched: number;
 }
 
-export function useIntake() {
-  const [lines, setLines] = useState<IntakeLine[]>(() => seedLines());
+export function useIntake(initialLines: IntakeLine[] = []) {
+  const [lines, setLines] = useState<IntakeLine[]>(initialLines);
   const [qi, setQi] = useState(0);
   const [flash, setFlash] = useState<string | null>(null);
   const [committed, setCommitted] = useState(false);

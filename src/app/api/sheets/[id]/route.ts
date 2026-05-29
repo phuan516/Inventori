@@ -13,27 +13,27 @@ function makeAuth(accessToken: string) {
   return auth;
 }
 
+// 12-column layout: ID SKU Name Category Manufacturer Series Stock LowStock Price Cost Hue Barcode
 function rowToProduct(row: string[]): Product | null {
   if (!row[0]) return null;
   return {
     id:      row[0],
     sku:     row[1] ?? '',
     name:    row[2] ?? '',
-    cat:     (row[3] as Product['cat']) ?? 'Gunpla',
-    grade:   (row[4] as Product['grade']) ?? '—',
-    mfr:     row[5] ?? '',
-    series:  row[6] ?? '',
-    stock:   parseInt(row[7]) || 0,
-    low:     parseInt(row[8]) || 0,
-    price:   parseFloat(row[9]) || 0,
-    cost:    parseFloat(row[10]) || 0,
-    hue:     parseInt(row[11]) || 0,
-    barcode: row[12] ?? '',
+    cat:     row[3] ?? '',
+    mfr:     row[4] ?? '',
+    series:  row[5] ?? '',
+    stock:   parseInt(row[6]) || 0,
+    low:     parseInt(row[7]) || 0,
+    price:   parseFloat(row[8]) || 0,
+    cost:    parseFloat(row[9]) || 0,
+    hue:     parseInt(row[10]) || 0,
+    barcode: row[11] ?? '',
   };
 }
 
 function productToRow(p: Product): (string | number)[] {
-  return [p.id, p.sku, p.name, p.cat, p.grade, p.mfr, p.series, p.stock, p.low, p.price, p.cost, p.hue, p.barcode];
+  return [p.id, p.sku, p.name, p.cat, p.mfr, p.series, p.stock, p.low, p.price, p.cost, p.hue, p.barcode];
 }
 
 type Ctx = { params: Promise<{ id: string }> };
@@ -53,7 +53,7 @@ async function fetchProductsFromSheet(sheetId: string, accessToken: string): Pro
   const sheets = google.sheets({ version: 'v4', auth });
   const res = await sheets.spreadsheets.values.get({
     spreadsheetId: sheetId,
-    range: `${SHEET}!A:M`,
+    range: `${SHEET}!A:L`,
   });
   const rows = (res.data.values ?? []) as string[][];
   return rows.slice(1).map(rowToProduct).filter(Boolean) as Product[];
@@ -88,7 +88,7 @@ export async function POST(req: NextRequest, ctx: Ctx) {
   const sheets = google.sheets({ version: 'v4', auth: makeAuth(session.accessToken!) });
   await sheets.spreadsheets.values.append({
     spreadsheetId: id,
-    range: `${SHEET}!A:M`,
+    range: `${SHEET}!A:L`,
     valueInputOption: 'USER_ENTERED',
     requestBody: { values: [productToRow(product)] },
   });
@@ -118,7 +118,7 @@ export async function PUT(req: NextRequest, ctx: Ctx) {
   const rowNum = rowIndex + 1;
   await sheets.spreadsheets.values.update({
     spreadsheetId: id,
-    range: `${SHEET}!A${rowNum}:M${rowNum}`,
+    range: `${SHEET}!A${rowNum}:L${rowNum}`,
     valueInputOption: 'USER_ENTERED',
     requestBody: { values: [productToRow(product)] },
   });

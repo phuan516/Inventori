@@ -2,7 +2,6 @@ import { SEED } from './data';
 
 export interface IntakeSession {
   id: string;
-  ref: string;
   title: string;
   supplier: string;
   date: string;
@@ -29,14 +28,7 @@ export interface IntakeLine {
   onHand: number | null;
 }
 
-export const INTAKES: IntakeSession[] = [
-  { id: 'i00', ref: 'INT-0048', title: 'Bandai — Aug restock',     supplier: 'Bandai Spirits', date: 'Today · 2:14 PM', status: 'draft',     skus: 4,  units: 46,  value: 1820, current: true },
-  { id: 'i01', ref: 'INT-0047', title: 'Good Smile pre-orders',    supplier: 'Good Smile Co.', date: 'Yesterday',       status: 'draft',     skus: 3,  units: 18,  value: 1244 },
-  { id: 'i02', ref: 'INT-0046', title: 'Tamiya paints & tools',    supplier: 'GSI / Tamiya',   date: 'May 24',          status: 'committed', skus: 11, units: 132, value: 2870 },
-  { id: 'i03', ref: 'INT-0045', title: 'Kotobukiya weekly',        supplier: 'Kotobukiya',     date: 'May 21',          status: 'committed', skus: 6,  units: 41,  value: 1990 },
-  { id: 'i04', ref: 'INT-0044', title: 'Bandai — RG/MG drop',      supplier: 'Bandai Spirits', date: 'May 19',          status: 'committed', skus: 9,  units: 88,  value: 4310 },
-  { id: 'i05', ref: 'INT-0043', title: 'Counter return / regrade', supplier: 'In-store',       date: 'May 16',          status: 'committed', skus: 2,  units: 5,   value: 188 },
-];
+export const INTAKES: IntakeSession[] = [];
 
 export const SCAN_QUEUE = [
   'BAN-2606107',

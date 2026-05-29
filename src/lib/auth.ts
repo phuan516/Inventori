@@ -12,7 +12,7 @@ export const authOptions: NextAuthOptions = {
             'openid',
             'email',
             'profile',
-            'https://www.googleapis.com/auth/drive.metadata.readonly',
+            'https://www.googleapis.com/auth/drive.file',
             'https://www.googleapis.com/auth/spreadsheets',
           ].join(' '),
           access_type: 'offline',
