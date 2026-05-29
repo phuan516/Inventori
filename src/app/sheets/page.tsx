@@ -75,6 +75,7 @@ export default function SheetsPage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? 'Failed to create sheet');
       localStorage.setItem('inventori_sheet_id', data.sheet.id);
+      localStorage.setItem('inventori_sheet_name', data.sheet.name ?? fullName);
       router.push('/inventory');
     } catch (e: unknown) {
       setCreateError(e instanceof Error ? e.message : 'Failed to create sheet');
@@ -234,6 +235,7 @@ export default function SheetsPage() {
                 dimmed={selectedId !== null && selectedId !== sheet.id}
                 onSelect={() => {
                   localStorage.setItem('inventori_sheet_id', sheet.id);
+                  localStorage.setItem('inventori_sheet_name', sheet.name ?? '');
                   setSelectedId(sheet.id);
                   router.push('/inventory');
                 }}

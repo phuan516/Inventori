@@ -33,6 +33,7 @@ export default function InventoryPage() {
   }, [user, authLoading, router]);
 
   const [sheetId, setSheetId] = useState<string | null>(null);
+  const [sheetName, setSheetName] = useState<string>('');
   const [items, setItems] = useState<Product[]>([]);
   const [productsLoading, setProductsLoading] = useState(true);
   const [query, setQuery] = useState('');
@@ -55,6 +56,7 @@ export default function InventoryPage() {
     const id = localStorage.getItem('inventori_sheet_id');
     if (!id) { router.replace('/sheets'); return; }
     setSheetId(id);
+    setSheetName(localStorage.getItem('inventori_sheet_name') ?? '');
   }, [router]);
 
   // Serve from cache immediately if fresh, always revalidate in background.
@@ -213,7 +215,7 @@ export default function InventoryPage() {
 
   return (
     <div style={{ width: '100%', minHeight: '100vh', background: T.bg, color: T.ink, display: 'grid', gridTemplateColumns: '232px 1fr' }}>
-      <Sidebar user={user} onSignOut={handleSignOut} onChangeSheet={() => router.push('/sheets')} itemCount={items.length} />
+      <Sidebar user={user} onSignOut={handleSignOut} onChangeSheet={() => router.push('/sheets')} itemCount={items.length} sheetName={sheetName} />
 
       <main style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
         <Topbar query={query} setQuery={setQuery} />
@@ -223,7 +225,7 @@ export default function InventoryPage() {
           {/* Page heading */}
           <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 16 }}>
             <div>
-              <div style={{ fontSize: 12, color: T.mute, marginBottom: 4 }}>Saito Hobby · Berkeley</div>
+              {sheetName && <div style={{ fontSize: 12, color: T.mute, marginBottom: 4 }}>{sheetName}</div>}
               <h1 style={{ margin: 0, fontSize: 24, fontWeight: 600, letterSpacing: '-.02em' }}>Inventory</h1>
             </div>
             <div style={{ display: 'flex', gap: 8 }}>

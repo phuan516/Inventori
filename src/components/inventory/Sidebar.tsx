@@ -11,9 +11,10 @@ interface SidebarProps {
   onSignOut: () => void;
   onChangeSheet: () => void;
   itemCount?: number;
+  sheetName?: string;
 }
 
-export default function Sidebar({ user, onSignOut, onChangeSheet, itemCount = 0 }: SidebarProps) {
+export default function Sidebar({ user, onSignOut, onChangeSheet, itemCount = 0, sheetName }: SidebarProps) {
   const router = useRouter();
   const pathname = usePathname();
   const { startLoading } = useNavigation();
@@ -38,7 +39,7 @@ export default function Sidebar({ user, onSignOut, onChangeSheet, itemCount = 0 
         </div>
         <div>
           <div style={{ fontSize: 15, fontWeight: 600, letterSpacing: '-.01em' }}>Inventori</div>
-          <div style={{ fontSize: 11, color: T.mute }}>Saito Hobby</div>
+          {sheetName && <div style={{ fontSize: 11, color: T.mute }}>{sheetName}</div>}
         </div>
       </div>
 

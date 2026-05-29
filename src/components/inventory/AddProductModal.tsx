@@ -33,7 +33,6 @@ export default function AddProductModal({ onClose, onAdd }: AddProductModalProps
   function submit() {
     const errs: typeof errors = {};
     if (!f.name.trim()) errs.name = 'Required';
-    if (!f.sku.trim())  errs.sku  = 'Required';
     if (Object.keys(errs).length) { setErrors(errs); return; }
     onAdd({
       ...f,
