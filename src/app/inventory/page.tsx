@@ -51,7 +51,7 @@ export default function AppPage() {
   const itemsRef = useRef<Product[]>([]);
   useEffect(() => { itemsRef.current = items; }, [items]);
 
-  const pendingUpdates = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
+  const pendingStockSaves = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
 
   useEffect(() => {
     const id = localStorage.getItem('inventori_sheet_id');
@@ -111,34 +111,42 @@ export default function AppPage() {
     setTimeout(() => setToast(t => (t?.id === id ? null : t)), 2400);
   }
 
-  function scheduleSave(productId: string) {
-    const existing = pendingUpdates.current.get(productId);
+  function scheduleStockSave(sku: string) {
+    const existing = pendingStockSaves.current.get(sku);
     if (existing) clearTimeout(existing);
-    pendingUpdates.current.set(productId, setTimeout(() => {
-      const product = itemsRef.current.find(p => p.id === productId);
+    pendingStockSaves.current.set(sku, setTimeout(() => {
+      const product = itemsRef.current.find(p => p.sku === sku);
       if (!product || !sheetId) return;
       fetch(`/api/sheets/${sheetId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(product),
       }).catch(() => showToast('Save failed', 'warn'));
-      pendingUpdates.current.delete(productId);
+      pendingStockSaves.current.delete(sku);
     }, 700));
   }
 
-  function updateStock(id: string, delta: number) {
+  function updateStock(sku: string, delta: number) {
     setItems(prev => prev.map(p =>
-      p.id === id ? { ...p, stock: Math.max(0, p.stock + delta) } : p
+      p.sku === sku ? { ...p, stock: Math.max(0, p.stock + delta) } : p
     ));
-    scheduleSave(id);
+    scheduleStockSave(sku);
   }
 
-  function updateItem(id: string, patch: Partial<Product>) {
-    setItems(prev => prev.map(p => p.id === id ? { ...p, ...patch } : p));
-    scheduleSave(id);
+  function saveItem(updated: Product) {
+    setItems(prev => prev.map(p => p.name === updated.name ? updated : p));
+    setSelected(null);
+    if (!sheetId) return;
+    fetch(`/api/sheets/${sheetId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(updated),
+    })
+      .then(r => { if (!r.ok) showToast('Save failed', 'warn'); else showToast(`Saved "${updated.name}"`); })
+      .catch(() => showToast('Save failed', 'warn'));
   }
 
-  async function addItem(data: Omit<Product, 'id'>) {
+  async function addItem(data: Product) {
     setAdding(false);
     if (!sheetId) return;
     const res = await fetch(`/api/sheets/${sheetId}`, {
@@ -152,16 +160,16 @@ export default function AppPage() {
     showToast(`Added "${product.name}" to inventory`);
   }
 
-  function deleteItem(id: string) {
-    const name = items.find(p => p.id === id)?.name;
-    setItems(prev => prev.filter(p => p.id !== id));
+  function deleteItem(sku: string) {
+    const item = items.find(p => p.sku === sku);
+    setItems(prev => prev.filter(p => p.sku !== sku));
     setSelected(null);
-    showToast(`Removed "${name}"`, 'warn');
+    showToast(`Removed "${item?.name}"`, 'warn');
     if (!sheetId) return;
     fetch(`/api/sheets/${sheetId}`, {
       method: 'DELETE',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ productId: id }),
+      body: JSON.stringify({ name: item?.name ?? '' }),
     }).catch(() => showToast('Delete sync failed', 'warn'));
   }
 
@@ -174,7 +182,7 @@ export default function AppPage() {
         p.sku.toLowerCase().includes(q) ||
         p.series.toLowerCase().includes(q) ||
         p.mfr.toLowerCase().includes(q) ||
-        p.barcode.toLowerCase().includes(q)
+        p.upc.toLowerCase().includes(q)
       );
     }
     if (cat !== 'all') list = list.filter(p => p.cat === cat);
@@ -197,7 +205,7 @@ export default function AppPage() {
     out:   items.filter(p => statusOf(p) === 'out').length,
   }), [items]);
 
-  const selectedItem = selected ? items.find(p => p.id === selected) ?? null : null;
+  const selectedItem = selected !== null ? items.find(p => p.sku === selected) ?? null : null;
   const anyFilter = cat !== 'all' || statusFilter !== 'all' || query !== '';
 
   function clearFilters() { setCat('all'); setStatusFilter('all'); setQuery(''); }
@@ -272,10 +280,10 @@ export default function AppPage() {
                       ? <EmptyState query={query} onClear={clearFilters} />
                       : filtered.map(p => (
                         <Row
-                          key={p.id} p={p}
-                          onSelect={() => setSelected(p.id)}
-                          onInc={() => updateStock(p.id, +1)}
-                          onDec={() => updateStock(p.id, -1)}
+                          key={p.sku} p={p}
+                          onSelect={() => setSelected(p.sku)}
+                          onInc={() => updateStock(p.sku, +1)}
+                          onDec={() => updateStock(p.sku, -1)}
                         />
                       ))
                     }
@@ -289,14 +297,15 @@ export default function AppPage() {
             <ProductDrawer
               item={selectedItem}
               onClose={() => setSelected(null)}
-              onChange={(patch) => updateItem(selectedItem.id, patch)}
-              onDelete={() => deleteItem(selectedItem.id)}
-              onInc={() => updateStock(selectedItem.id, +1)}
-              onDec={() => updateStock(selectedItem.id, -1)}
+              onSave={saveItem}
+              onDelete={() => deleteItem(selectedItem.sku)}
+              products={items}
+              onInc={() => updateStock(selectedItem.sku, +1)}
+              onDec={() => updateStock(selectedItem.sku, -1)}
             />
           )}
 
-          {adding && <AddProductModal onClose={() => setAdding(false)} onAdd={addItem} />}
+          {adding && <AddProductModal onClose={() => setAdding(false)} onAdd={addItem} products={items} />}
         </main>
       )}
 

@@ -7,8 +7,8 @@ export type PillTone = 'ok' | 'warn' | 'danger' | 'brand' | 'mute';
 export type BtnKind = 'primary' | 'ghost' | 'subtle' | 'danger';
 
 export interface Product {
-  id: string;
   sku: string;
+  upc: string;
   name: string;
   cat: string;
   mfr: string;
@@ -18,7 +18,6 @@ export interface Product {
   price: number;
   cost: number;
   hue: number;
-  barcode: string;
 }
 
 export interface User {

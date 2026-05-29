@@ -10,22 +10,26 @@ import Field from '@/components/ui/Field';
 import Input from '@/components/ui/Input';
 import ComboInput from '@/components/ui/ComboInput';
 
-type FormState = Omit<Product, 'id'>;
+function genSku(): string {
+  const chars = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+  return Array.from({ length: 8 }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
+}
 
 interface AddProductModalProps {
   onClose: () => void;
-  onAdd: (p: Omit<Product, 'id'>) => void;
+  onAdd: (p: Product) => void;
+  products: Product[];
 }
 
-export default function AddProductModal({ onClose, onAdd }: AddProductModalProps) {
+export default function AddProductModal({ onClose, onAdd, products }: AddProductModalProps) {
   const { settings } = useSettings();
-  const [f, setF] = useState<FormState>({
-    name: '', sku: '', cat: '',
-    mfr: '', series: '', stock: 1, low: 0, price: 0, cost: 0, hue: 200, barcode: '',
+  const [f, setF] = useState<Product>({
+    sku: '', upc: '', name: '', cat: '',
+    mfr: '', series: '', stock: 1, low: 0, price: 0, cost: 0, hue: 200,
   });
-  const [errors, setErrors] = useState<Partial<Record<keyof FormState, string>>>({});
+  const [errors, setErrors] = useState<Partial<Record<keyof Product, string>>>({});
 
-  function set<K extends keyof FormState>(k: K, v: FormState[K]) {
+  function set<K extends keyof Product>(k: K, v: Product[K]) {
     setF(prev => ({ ...prev, [k]: v }));
     setErrors(e => ({ ...e, [k]: undefined }));
   }
@@ -33,9 +37,14 @@ export default function AddProductModal({ onClose, onAdd }: AddProductModalProps
   function submit() {
     const errs: typeof errors = {};
     if (!f.name.trim()) errs.name = 'Required';
+    const sku = f.sku.trim();
+    if (sku && products.some(p => p.sku === sku)) errs.sku = 'SKU already exists';
+    const upc = f.upc.trim();
+    if (upc && products.some(p => p.upc === upc)) errs.upc = 'UPC already exists';
     if (Object.keys(errs).length) { setErrors(errs); return; }
     onAdd({
       ...f,
+      sku:   f.sku.trim(),
       hue:   Math.floor(Math.random() * 360),
       price: parseFloat(String(f.price)) || 0,
       cost:  parseFloat(String(f.cost))  || 0,
@@ -92,11 +101,29 @@ export default function AddProductModal({ onClose, onAdd }: AddProductModalProps
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
             <Field label="SKU" error={errors.sku}>
-              <Input value={f.sku} onChange={(e) => set('sku', e.target.value.toUpperCase())}
-                placeholder="BAN-2607193" style={{ fontFamily: T.fontMono }} />
+              <div style={{ display: 'flex', gap: 6 }}>
+                <Input
+                  value={f.sku}
+                  onChange={(e) => set('sku', e.target.value.toUpperCase())}
+                  placeholder="BAN-2607193"
+                  style={{ fontFamily: T.fontMono, flex: 1, minWidth: 0 }}
+                />
+                <button
+                  type="button"
+                  onClick={() => set('sku', genSku())}
+                  title="Auto-generate SKU"
+                  style={{
+                    flexShrink: 0, height: 36, padding: '0 10px', borderRadius: 7,
+                    border: `1px solid ${T.rule}`, background: T.bg, color: T.ink2,
+                    cursor: 'pointer', fontSize: 11, fontWeight: 600, whiteSpace: 'nowrap',
+                  }}
+                >
+                  Auto
+                </button>
+              </div>
             </Field>
-            <Field label="Barcode" hint="Scan or type manually">
-              <Input value={f.barcode} onChange={(e) => set('barcode', e.target.value)}
+            <Field label="UPC" hint="Scan or type manually" error={errors.upc}>
+              <Input value={f.upc} onChange={(e) => set('upc', e.target.value)}
                 placeholder="e.g. 4573102620767" style={{ fontFamily: T.fontMono }} />
             </Field>
             <Field label="Category">

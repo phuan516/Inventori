@@ -22,6 +22,7 @@ interface Props {
 
 export default function LedgerRow({ l, flash, open, onToggleSetup, onBump, onCost, onRemove, onResolve }: Props) {
   const pending = !l.matched;
+  const editing = open && !pending;
   return (
     <div
       className={flash ? 'intk-flash' : undefined}
@@ -32,7 +33,7 @@ export default function LedgerRow({ l, flash, open, onToggleSetup, onBump, onCos
     >
       <div style={{
         display: 'grid',
-        gridTemplateColumns: '44px 1fr 130px 116px 96px 96px 34px',
+        gridTemplateColumns: '44px 1fr 130px 116px 96px 96px 64px',
         gap: 12, padding: '11px 16px', alignItems: 'center',
       }}>
         {pending ? (
@@ -65,7 +66,6 @@ export default function LedgerRow({ l, flash, open, onToggleSetup, onBump, onCos
               }}>{l.name}</div>
               <div style={{ fontSize: 11.5, color: T.mute, marginTop: 1 }}>
                 {l.mfr} · {l.cat}
-                {l.grade !== '—' ? ` · ${l.grade}` : ''}
                 {l.onHand != null && (
                   <span style={{ color: T.faint }}> · {l.onHand} on hand</span>
                 )}
@@ -102,36 +102,60 @@ export default function LedgerRow({ l, flash, open, onToggleSetup, onBump, onCos
           {pending ? '—' : `$${(l.qty * l.cost).toFixed(2)}`}
         </span>
 
-        <button
-          onClick={onRemove}
-          title="Remove"
-          style={{
-            width: 28, height: 28, border: 'none', background: 'transparent',
-            color: T.faint, borderRadius: 6, cursor: 'pointer',
-            display: 'grid', placeItems: 'center',
-            transition: 'background .12s, color .12s',
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.background = T.dangerSoft;
-            e.currentTarget.style.color = T.danger;
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.background = 'transparent';
-            e.currentTarget.style.color = T.faint;
-          }}
-        >
-          <Icon.x s={13} />
-        </button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+          {!pending && (
+            <button
+              onClick={onToggleSetup}
+              title={open ? 'Close edit' : 'Edit product'}
+              style={{
+                width: 28, height: 28, border: 'none', background: 'transparent',
+                color: open ? T.brand : T.faint, borderRadius: 6, cursor: 'pointer',
+                display: 'grid', placeItems: 'center',
+                transition: 'background .12s, color .12s',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = T.brandSoft;
+                e.currentTarget.style.color = T.brand;
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'transparent';
+                e.currentTarget.style.color = open ? T.brand : T.faint;
+              }}
+            >
+              <Icon.edit s={13} />
+            </button>
+          )}
+          <button
+            onClick={onRemove}
+            title="Remove"
+            style={{
+              width: 28, height: 28, border: 'none', background: 'transparent',
+              color: T.faint, borderRadius: 6, cursor: 'pointer',
+              display: 'grid', placeItems: 'center',
+              transition: 'background .12s, color .12s',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = T.dangerSoft;
+              e.currentTarget.style.color = T.danger;
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = 'transparent';
+              e.currentTarget.style.color = T.faint;
+            }}
+          >
+            <Icon.x s={13} />
+          </button>
+        </div>
       </div>
 
-      {pending && (
+      {(pending || editing) && (
         <div style={{ padding: '0 16px 14px 72px' }}>
           {open ? (
             <div style={{
               background: T.panel, border: `1px solid ${T.rule}`,
               borderRadius: 10, padding: 16,
             }}>
-              <PendingSetup line={l} onSave={onResolve} onCancel={onToggleSetup} />
+              <PendingSetup line={l} onSave={onResolve} onCancel={onToggleSetup} isEdit={!pending} />
             </div>
           ) : (
             <Btn

@@ -6,6 +6,7 @@ import IntakeList from './IntakeList';
 import LedgerWorkspace from './LedgerWorkspace';
 import { IIcon } from './IntakeIcons';
 import type { IntakeSession, IntakeLine } from '@/lib/intakeData';
+import type { Product } from '@/lib/types';
 
 function LedgerSkeleton() {
   return (
@@ -87,6 +88,7 @@ export default function IntakeTab() {
   const [intakes, setIntakes] = useState<IntakeSession[]>([]);
   const [selectedIntake, setSelectedIntake] = useState<IntakeSession | null>(null);
   const [intakeLines, setIntakeLines] = useState<IntakeLine[]>([]);
+  const [catalog, setCatalog] = useState<Product[]>([]);
   const [loadingIntakes, setLoadingIntakes] = useState(true);
   const [loadingLines, setLoadingLines] = useState(false);
   const [creating, setCreating] = useState(false);
@@ -95,6 +97,12 @@ export default function IntakeTab() {
     storeId.current = localStorage.getItem('inventori_store_id');
     if (!storeId.current) { setLoadingIntakes(false); return; }
     fetchIntakes();
+    const sheetId = localStorage.getItem('inventori_sheet_id');
+    if (sheetId) {
+      fetch(`/api/sheets/${sheetId}`)
+        .then(r => r.json())
+        .then(d => setCatalog(d.products ?? []));
+    }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -136,6 +144,13 @@ export default function IntakeTab() {
     } finally {
       setCreating(false);
     }
+  }
+
+  function handleDiscard() {
+    if (!selectedIntake) return;
+    setIntakes(prev => prev.filter(i => i.id !== selectedIntake.id));
+    setSelectedIntake(null);
+    setIntakeLines([]);
   }
 
   async function handleCommitted() {
@@ -184,8 +199,10 @@ export default function IntakeTab() {
           key={selectedIntake.id}
           intake={selectedIntake}
           initialLines={intakeLines}
+          catalog={catalog}
           onCommitted={handleCommitted}
           onNew={handleNewIntake}
+          onDiscard={handleDiscard}
         />
       ) : (
         <div style={{ flex: 1, display: 'grid', placeItems: 'center' }}>

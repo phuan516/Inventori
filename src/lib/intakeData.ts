@@ -1,4 +1,4 @@
-import { SEED } from './data';
+import type { Product } from './types';
 
 export interface IntakeSession {
   id: string;
@@ -30,27 +30,15 @@ export interface IntakeLine {
 
 export const INTAKES: IntakeSession[] = [];
 
-export const SCAN_QUEUE = [
-  'BAN-2606107',
-  'GSC-G94821',
-  'BAN-7781002',
-  'BAN-2554145',
-  'BAN-2606107',
-  'KOT-PP932',
-  'TAM-49014',
-  'BAN-5063385',
-];
-
 let _lid = 0;
 function lineId() { return 'L' + (++_lid); }
 
-export function matchedLine(sku: string, qty = 1): IntakeLine {
-  const p = SEED.find(x => x.sku === sku);
-  if (!p) return pendingLine(sku, qty);
+export function matchedLineFromProduct(p: Product, qty = 1, fallbackSku?: string): IntakeLine {
   return {
-    id: lineId(), sku: p.sku, qty,
+    id: lineId(), sku: p.sku || fallbackSku || p.upc || '', qty,
     matched: true,
-    name: p.name, mfr: p.mfr, cat: p.cat, grade: p.grade,
+    name: p.name, mfr: p.mfr, cat: p.cat,
+    grade: '—',
     series: p.series, hue: p.hue, cost: p.cost, price: p.price,
     onHand: p.stock,
   };
@@ -66,11 +54,3 @@ export function pendingLine(sku: string, qty = 1): IntakeLine {
   };
 }
 
-export function seedLines(): IntakeLine[] {
-  return [
-    pendingLine('BAN-7781002', 6),
-    matchedLine('GSC-G94821', 12),
-    matchedLine('BAN-2606107', 24),
-    matchedLine('BAN-2554145', 4),
-  ];
-}

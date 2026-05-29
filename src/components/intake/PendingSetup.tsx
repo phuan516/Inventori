@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import T from '@/lib/theme';
-import { CATEGORIES, GRADES } from '@/lib/data';
+import { CATEGORIES } from '@/lib/data';
 import Btn from '@/components/ui/Btn';
 import { Icon } from '@/components/ui/Icon';
 import { IIcon } from './IntakeIcons';
@@ -12,13 +12,13 @@ interface Props {
   line: IntakeLine;
   onSave: (patch: Partial<IntakeLine>) => void;
   onCancel?: () => void;
+  isEdit?: boolean;
 }
 
-export default function PendingSetup({ line, onSave, onCancel }: Props) {
+export default function PendingSetup({ line, onSave, onCancel, isEdit }: Props) {
   const [f, setF] = useState({
     name: line.name || '',
     cat: line.cat || 'Gunpla',
-    grade: line.grade || 'HG',
     mfr: line.mfr || '',
     cost: line.cost || '',
   });
@@ -28,7 +28,7 @@ export default function PendingSetup({ line, onSave, onCancel }: Props) {
   function save() {
     if (!f.name.trim()) { setErr(true); return; }
     onSave({
-      name: f.name.trim(), cat: f.cat, grade: f.grade,
+      name: f.name.trim(), cat: f.cat,
       mfr: f.mfr.trim(), cost: parseFloat(String(f.cost)) || 0,
     });
   }
@@ -59,10 +59,10 @@ export default function PendingSetup({ line, onSave, onCancel }: Props) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-        <span style={{ color: T.warn, display: 'grid', placeItems: 'center' }}>
+        <span style={{ color: isEdit ? T.brand : T.warn, display: 'grid', placeItems: 'center' }}>
           <IIcon.sparkle s={15} />
         </span>
-        <div style={{ fontSize: 13, fontWeight: 600 }}>New product</div>
+        <div style={{ fontSize: 13, fontWeight: 600 }}>{isEdit ? 'Edit product (saves as new)' : 'New product'}</div>
         <span style={{ fontSize: 11.5, color: T.mute, fontFamily: T.fontMono }}>{line.sku}</span>
       </div>
 
@@ -86,12 +86,6 @@ export default function PendingSetup({ line, onSave, onCancel }: Props) {
           </select>
         </label>
         <label style={{ display: 'block' }}>
-          <div style={{ fontSize: 12, fontWeight: 500, color: T.ink2, marginBottom: 5 }}>Grade</div>
-          <select value={f.grade} onChange={(e) => set('grade', e.target.value)} style={selectStyle} onFocus={focusInput} onBlur={blurInput}>
-            {GRADES.map(g => <option key={g} value={g}>{g}</option>)}
-          </select>
-        </label>
-        <label style={{ display: 'block' }}>
           <div style={{ fontSize: 12, fontWeight: 500, color: T.ink2, marginBottom: 5 }}>Manufacturer</div>
           <input value={f.mfr} onChange={(e) => set('mfr', e.target.value)} placeholder="Bandai" style={inputStyle} onFocus={focusInput} onBlur={blurInput} />
         </label>
@@ -104,7 +98,7 @@ export default function PendingSetup({ line, onSave, onCancel }: Props) {
       <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
         {onCancel && <Btn kind="ghost" onClick={onCancel} style={{ height: 32 }}>Cancel</Btn>}
         <Btn kind="primary" onClick={save} icon={<Icon.check s={13} />} style={{ height: 32 }}>
-          Create &amp; match
+          {isEdit ? 'Save as new product' : 'Create & match'}
         </Btn>
       </div>
     </div>

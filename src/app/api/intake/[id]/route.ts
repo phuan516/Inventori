@@ -38,6 +38,19 @@ function lineToRow(l: IntakeLine): (string | number)[] {
 
 type Ctx = { params: Promise<{ id: string }> };
 
+// DELETE /api/intake/[id] — permanently delete this intake
+export async function DELETE(_req: NextRequest, ctx: Ctx) {
+  const session = await getServerSession(authOptions);
+  if (!session?.accessToken) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+  const { id } = await ctx.params;
+  const auth = makeAuth(session.accessToken);
+  const drive = google.drive({ version: 'v3', auth });
+
+  await drive.files.delete({ fileId: id });
+  return NextResponse.json({ ok: true });
+}
+
 // GET /api/intake/[id] — read intake lines
 export async function GET(_req: NextRequest, ctx: Ctx) {
   const session = await getServerSession(authOptions);
@@ -53,7 +66,7 @@ export async function GET(_req: NextRequest, ctx: Ctx) {
   });
 
   const rows = (res.data.values ?? []) as string[][];
-  const lines = rows.filter(r => r[0]).map(rowToLine);
+  const lines = rows.filter(r => r.some(c => c !== '' && c != null)).map(rowToLine);
 
   return NextResponse.json({ lines });
 }
@@ -106,25 +119,26 @@ async function applyToInventory(
   sheetId: string,
   lines: IntakeLine[],
 ) {
-  // Read current inventory (12-col layout: A=ID B=SKU C=Name D=Cat E=Mfr F=Series G=Stock …)
+  // Read current inventory (11-col layout: A=SKU B=UPC C=Name D=Cat E=Mfr F=Series G=Stock …)
   const invRes = await sheetsApi.spreadsheets.values.get({
     spreadsheetId: sheetId,
-    range: 'Products!A:L',
+    range: 'Products!A:K',
   });
   const invRows = (invRes.data.values ?? []) as string[][];
 
-  // Map SKU → { rowNum (1-based), currentStock }
+  // Map SKU and UPC → { rowNum (1-based), currentStock }
   const skuMap = new Map<string, { rowNum: number; stock: number }>();
   invRows.forEach((row, i) => {
-    if (i === 0 || !row[1]) return;
-    skuMap.set(row[1], { rowNum: i + 1, stock: parseInt(row[6]) || 0 });
+    if (i === 0) return;
+    if (row[0]) skuMap.set(row[0], { rowNum: i + 1, stock: parseInt(row[6]) || 0 });
+    if (row[1]) skuMap.set(row[1], { rowNum: i + 1, stock: parseInt(row[6]) || 0 });
   });
 
   const stockUpdates: { range: string; values: number[][] }[] = [];
   const newRows: (string | number)[][] = [];
 
   for (const line of lines) {
-    const existing = skuMap.get(line.sku);
+    const existing = skuMap.get(line.sku) ?? skuMap.get(line.sku.toUpperCase());
     if (existing) {
       stockUpdates.push({
         range: `Products!G${existing.rowNum}`,
@@ -132,8 +146,8 @@ async function applyToInventory(
       });
     } else {
       newRows.push([
-        `p${Date.now().toString(36)}${Math.random().toString(36).slice(2, 5)}`,
         line.sku,
+        '',
         line.name,
         line.cat || '',
         line.mfr || '',
@@ -143,7 +157,6 @@ async function applyToInventory(
         line.price || 0,
         line.cost || 0,
         line.hue || 0,
-        line.sku,
       ]);
     }
   }
@@ -158,7 +171,7 @@ async function applyToInventory(
   if (newRows.length > 0) {
     await sheetsApi.spreadsheets.values.append({
       spreadsheetId: sheetId,
-      range: 'Products!A:L',
+      range: 'Products!A:K',
       valueInputOption: 'USER_ENTERED',
       requestBody: { values: newRows },
     });

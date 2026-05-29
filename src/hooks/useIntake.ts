@@ -1,8 +1,8 @@
 'use client';
 
 import { useState, useMemo, useCallback } from 'react';
-import { SEED } from '@/lib/data';
-import { SCAN_QUEUE, matchedLine, pendingLine, type IntakeLine } from '@/lib/intakeData';
+import { matchedLineFromProduct, pendingLine, type IntakeLine } from '@/lib/intakeData';
+import type { Product } from '@/lib/types';
 
 export interface IntakeSummary {
   skus: number;
@@ -12,9 +12,8 @@ export interface IntakeSummary {
   matched: number;
 }
 
-export function useIntake(initialLines: IntakeLine[] = []) {
+export function useIntake(initialLines: IntakeLine[] = [], catalog: Product[] = []) {
   const [lines, setLines] = useState<IntakeLine[]>(initialLines);
-  const [qi, setQi] = useState(0);
   const [flash, setFlash] = useState<string | null>(null);
   const [committed, setCommitted] = useState(false);
 
@@ -27,7 +26,11 @@ export function useIntake(initialLines: IntakeLine[] = []) {
     const code = (raw || '').trim().toUpperCase();
     if (!code) return;
     setLines(prev => {
-      const i = prev.findIndex(l => l.sku === code);
+      const known = catalog.find(p =>
+        p.sku.toUpperCase() === code || (p.upc && p.upc.toUpperCase() === code)
+      );
+      const matchKey = known ? known.sku.toUpperCase() : code;
+      const i = prev.findIndex(l => l.sku.toUpperCase() === matchKey);
       if (i >= 0) {
         const next = [...prev];
         next[i] = { ...next[i], qty: next[i].qty + 1 };
@@ -35,17 +38,11 @@ export function useIntake(initialLines: IntakeLine[] = []) {
         const [touched] = next.splice(i, 1);
         return [touched, ...next];
       }
-      const known = SEED.find(p => p.sku === code);
-      const line = known ? matchedLine(code, 1) : pendingLine(code, 1);
+      const line = known ? matchedLineFromProduct(known, 1, code) : pendingLine(code, 1);
       doFlash(line.id);
       return [line, ...prev];
     });
-  }, [doFlash]);
-
-  const simulate = useCallback(() => {
-    scan(SCAN_QUEUE[qi % SCAN_QUEUE.length]);
-    setQi(q => q + 1);
-  }, [scan, qi]);
+  }, [doFlash, catalog]);
 
   const setQty = useCallback((id: string, q: number) => {
     setLines(prev => prev.map(l => l.id === id ? { ...l, qty: Math.max(0, q) } : l));
@@ -75,5 +72,5 @@ export function useIntake(initialLines: IntakeLine[] = []) {
     return { skus: lines.length, units, value, pending, matched: lines.length - pending };
   }, [lines]);
 
-  return { lines, flash, committed, setCommitted, scan, simulate, setQty, bump, setCost, remove, resolve, summary };
+  return { lines, flash, committed, setCommitted, scan, setQty, bump, setCost, remove, resolve, summary };
 }

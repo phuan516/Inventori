@@ -65,13 +65,13 @@ export function Row({ p, onSelect, onInc, onDec }: RowProps) {
           {p.name}
         </div>
         <div style={{ display: 'flex', gap: 10, marginTop: 2, fontSize: 11.5, color: T.mute }}>
-          <span style={{ fontFamily: T.fontMono }}>{p.sku}</span>
-          <span>· {p.mfr}</span>
-          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>· {p.series}</span>
+          {p.sku    && <span style={{ fontFamily: T.fontMono }}>{p.sku}</span>}
+          {p.mfr    && <span>{p.sku ? '· ' : ''}{p.mfr}</span>}
+          {p.series && <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{(p.sku || p.mfr) ? '· ' : ''}{p.series}</span>}
         </div>
       </div>
 
-      <span style={{ fontSize: 12.5, color: T.ink2 }}>{p.cat}</span>
+      <span style={{ fontSize: 12.5, color: T.ink2 }}>{p.cat || '—'}</span>
 
       {/* Stock stepper — stopPropagation so row click doesn't fire */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 4 }} onClick={(e) => e.stopPropagation()}>

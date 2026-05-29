@@ -13,27 +13,26 @@ function makeAuth(accessToken: string) {
   return auth;
 }
 
-// 12-column layout: ID SKU Name Category Manufacturer Series Stock LowStock Price Cost Hue Barcode
+// 11-column layout: SKU UPC Name Category Manufacturer Series Stock LowStock Price Cost Hue
 function rowToProduct(row: string[]): Product | null {
-  if (!row[0]) return null;
+  if (!row[2]) return null; // skip empty rows — name is the required field
   return {
-    id:      row[0],
-    sku:     row[1] ?? '',
-    name:    row[2] ?? '',
-    cat:     row[3] ?? '',
-    mfr:     row[4] ?? '',
-    series:  row[5] ?? '',
-    stock:   parseInt(row[6]) || 0,
-    low:     parseInt(row[7]) || 0,
-    price:   parseFloat(row[8]) || 0,
-    cost:    parseFloat(row[9]) || 0,
-    hue:     parseInt(row[10]) || 0,
-    barcode: row[11] ?? '',
+    sku:    row[0] ?? '',
+    upc:    row[1] ?? '',
+    name:   row[2] ?? '',
+    cat:    row[3] ?? '',
+    mfr:    row[4] ?? '',
+    series: row[5] ?? '',
+    stock:  parseInt(row[6]) || 0,
+    low:    parseInt(row[7]) || 0,
+    price:  parseFloat(row[8]) || 0,
+    cost:   parseFloat(row[9]) || 0,
+    hue:    parseInt(row[10]) || 0,
   };
 }
 
 function productToRow(p: Product): (string | number)[] {
-  return [p.id, p.sku, p.name, p.cat, p.mfr, p.series, p.stock, p.low, p.price, p.cost, p.hue, p.barcode];
+  return [p.sku, p.upc, p.name, p.cat, p.mfr, p.series, p.stock, p.low, p.price, p.cost, p.hue];
 }
 
 type Ctx = { params: Promise<{ id: string }> };
@@ -53,7 +52,7 @@ async function fetchProductsFromSheet(sheetId: string, accessToken: string): Pro
   const sheets = google.sheets({ version: 'v4', auth });
   const res = await sheets.spreadsheets.values.get({
     spreadsheetId: sheetId,
-    range: `${SHEET}!A:L`,
+    range: `${SHEET}!A:K`,
   });
   const rows = (res.data.values ?? []) as string[][];
   return rows.slice(1).map(rowToProduct).filter(Boolean) as Product[];
@@ -82,13 +81,12 @@ export async function POST(req: NextRequest, ctx: Ctx) {
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const { id } = await ctx.params;
-  const data = (await req.json()) as Omit<Product, 'id'>;
-  const product: Product = { ...data, id: `p${Date.now()}` };
+  const product = (await req.json()) as Product;
 
   const sheets = google.sheets({ version: 'v4', auth: makeAuth(session.accessToken!) });
   await sheets.spreadsheets.values.append({
     spreadsheetId: id,
-    range: `${SHEET}!A:L`,
+    range: `${SHEET}!A:K`,
     valueInputOption: 'USER_ENTERED',
     requestBody: { values: [productToRow(product)] },
   });
@@ -107,18 +105,18 @@ export async function PUT(req: NextRequest, ctx: Ctx) {
 
   const sheets = google.sheets({ version: 'v4', auth: makeAuth(session.accessToken!) });
 
-  const colA = await sheets.spreadsheets.values.get({
+  const colC = await sheets.spreadsheets.values.get({
     spreadsheetId: id,
-    range: `${SHEET}!A:A`,
+    range: `${SHEET}!C:C`,
   });
-  const ids = ((colA.data.values ?? []) as string[][]).map(r => r[0]);
-  const rowIndex = ids.indexOf(product.id);
+  const names = ((colC.data.values ?? []) as string[][]).map(r => r[0] ?? '');
+  const rowIndex = names.findIndex((n, i) => i > 0 && n === product.name);
   if (rowIndex < 1) return NextResponse.json({ error: 'Not found' }, { status: 404 });
 
   const rowNum = rowIndex + 1;
   await sheets.spreadsheets.values.update({
     spreadsheetId: id,
-    range: `${SHEET}!A${rowNum}:L${rowNum}`,
+    range: `${SHEET}!A${rowNum}:K${rowNum}`,
     valueInputOption: 'USER_ENTERED',
     requestBody: { values: [productToRow(product)] },
   });
@@ -133,16 +131,16 @@ export async function DELETE(req: NextRequest, ctx: Ctx) {
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const { id } = await ctx.params;
-  const { productId } = (await req.json()) as { productId: string };
+  const { name } = (await req.json()) as { name: string };
 
   const sheets = google.sheets({ version: 'v4', auth: makeAuth(session.accessToken!) });
 
-  const colA = await sheets.spreadsheets.values.get({
+  const colC = await sheets.spreadsheets.values.get({
     spreadsheetId: id,
-    range: `${SHEET}!A:A`,
+    range: `${SHEET}!C:C`,
   });
-  const ids = ((colA.data.values ?? []) as string[][]).map(r => r[0]);
-  const rowIndex = ids.indexOf(productId);
+  const names = ((colC.data.values ?? []) as string[][]).map(r => r[0] ?? '');
+  const rowIndex = names.findIndex((n, i) => i > 0 && n === name);
   if (rowIndex < 1) return NextResponse.json({ error: 'Not found' }, { status: 404 });
 
   const spreadsheet = await sheets.spreadsheets.get({

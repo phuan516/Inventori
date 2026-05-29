@@ -1,11 +1,12 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import T from '@/lib/theme';
 import Btn from '@/components/ui/Btn';
 import Panel from '@/components/ui/Panel';
 import { useIntake } from '@/hooks/useIntake';
 import type { IntakeSession, IntakeLine } from '@/lib/intakeData';
+import type { Product } from '@/lib/types';
 import ScanField from './ScanField';
 import LedgerRow from './LedgerRow';
 import CommitConfirm from './CommitConfirm';
@@ -16,23 +17,37 @@ import { IIcon } from './IntakeIcons';
 interface Props {
   intake: IntakeSession;
   initialLines: IntakeLine[];
+  catalog: Product[];
   onCommitted: () => void;
   onNew: () => void;
+  onDiscard: () => void;
 }
 
-export default function LedgerWorkspace({ intake, initialLines, onCommitted, onNew }: Props) {
-  const ik = useIntake(initialLines);
+export default function LedgerWorkspace({ intake, initialLines, catalog, onCommitted, onNew, onDiscard }: Props) {
+  const ik = useIntake(initialLines, catalog);
   const [openSetup, setOpenSetup] = useState<string | null>(null);
   const [confirming, setConfirming] = useState(false);
   const [saving, setSaving] = useState(false);
 
   const isCommitted = intake.status === 'committed' || ik.committed;
+  const autoSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isFirstRender = useRef(true);
 
   useEffect(() => {
     const p = ik.lines.find(l => !l.matched);
     if (p && openSetup === null) setOpenSetup(p.id);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Auto-save draft 2s after lines stop changing
+  useEffect(() => {
+    if (isFirstRender.current) { isFirstRender.current = false; return; }
+    if (isCommitted) return;
+    if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current);
+    autoSaveTimer.current = setTimeout(saveDraft, 2000);
+    return () => { if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current); };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ik.lines]);
 
   async function saveDraft() {
     setSaving(true);
@@ -42,6 +57,17 @@ export default function LedgerWorkspace({ intake, initialLines, onCommitted, onN
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ lines: ik.lines, status: 'draft' }),
       });
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function discard() {
+    if (!confirm('Delete this intake? This cannot be undone.')) return;
+    setSaving(true);
+    try {
+      await fetch(`/api/intake/${intake.id}`, { method: 'DELETE' });
+      onDiscard();
     } finally {
       setSaving(false);
     }
@@ -105,7 +131,7 @@ export default function LedgerWorkspace({ intake, initialLines, onCommitted, onN
             {/* Scan zone — draft only */}
             {!isCommitted && (
               <div style={{ padding: '20px 28px 14px' }}>
-                <ScanField onScan={ik.scan} onSimulate={ik.simulate} />
+                <ScanField onScan={ik.scan} />
                 <div style={{ display: 'flex', alignItems: 'center', gap: 18, marginTop: 14 }}>
                   <LedgerStat label="Products" value={ik.summary.skus} />
                   <Sep />
@@ -151,7 +177,7 @@ export default function LedgerWorkspace({ intake, initialLines, onCommitted, onN
               <Panel style={{ overflow: 'hidden' }}>
                 <div style={{
                   display: 'grid',
-                  gridTemplateColumns: '44px 1fr 130px 116px 96px 96px 34px',
+                  gridTemplateColumns: '44px 1fr 130px 116px 96px 96px 64px',
                   gap: 12, padding: '10px 16px', alignItems: 'center',
                   borderBottom: `1px solid ${T.rule2}`, background: T.bg,
                   fontSize: 10.5, fontWeight: 600, color: T.mute,
@@ -198,7 +224,7 @@ export default function LedgerWorkspace({ intake, initialLines, onCommitted, onN
                   {' at cost'}
                 </div>
                 <div style={{ flex: 1 }} />
-                <Btn kind="ghost">Discard</Btn>
+                <Btn kind="ghost" onClick={discard} disabled={saving}>Discard</Btn>
                 <Btn
                   kind="primary"
                   icon={<IIcon.inbox s={15} />}

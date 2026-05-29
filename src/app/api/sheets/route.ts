@@ -107,8 +107,8 @@ export async function POST(req: NextRequest) {
       valueInputOption: 'RAW',
       data: [
         {
-          range: 'Products!A1:L1',
-          values: [['ID', 'SKU', 'Name', 'Category', 'Manufacturer', 'Series', 'Stock', 'Low Stock', 'Price', 'Cost', 'Hue', 'Barcode']],
+          range: 'Products!A1:K1',
+          values: [['SKU', 'UPC', 'Name', 'Category', 'Manufacturer', 'Series', 'Stock', 'Low Stock', 'Price', 'Cost', 'Hue']],
         },
         {
           range: 'Settings!A1:B4',
