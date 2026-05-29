@@ -4,15 +4,17 @@ import { useState, useMemo, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import T from '@/lib/theme';
 import type { Product, StatusFilter, SortOption } from '@/lib/types';
-import { statusOf, CATEGORIES } from '@/lib/data';
+import { statusOf } from '@/lib/data';
 import { useAuth } from '@/context/AuthContext';
 import { useSettings } from '@/context/SettingsContext';
-import Sidebar from '@/components/inventory/Sidebar';
+import Sidebar, { type AppTab } from '@/components/inventory/Sidebar';
 import Topbar from '@/components/inventory/Topbar';
 import FilterBar from '@/components/inventory/FilterBar';
 import { TableHeader, Row, EmptyState, SkeletonRows, TABLE_MIN_WIDTH } from '@/components/inventory/InventoryTable';
 import ProductDrawer from '@/components/inventory/ProductDrawer';
 import AddProductModal from '@/components/inventory/AddProductModal';
+import IntakeTab from '@/components/intake/IntakeTab';
+import SettingsTab from '@/components/settings/SettingsTab';
 import Panel from '@/components/ui/Panel';
 import Btn from '@/components/ui/Btn';
 import Toast from '@/components/ui/Toast';
@@ -22,10 +24,12 @@ import { Icon } from '@/components/ui/Icon';
 const productCache = new Map<string, { products: Product[]; ts: number }>();
 const CACHE_TTL = 5 * 60 * 1000;
 
-export default function InventoryPage() {
+export default function AppPage() {
   const router = useRouter();
   const { user, loading: authLoading, signOut } = useAuth();
   const { settings } = useSettings();
+
+  const [activeTab, setActiveTab] = useState<AppTab>('inventory');
 
   // Redirect to login if not signed in
   useEffect(() => {
@@ -44,14 +48,11 @@ export default function InventoryPage() {
   const [adding, setAdding] = useState(false);
   const [toast, setToast] = useState<{ msg: string; tone: 'ok' | 'warn'; id: number } | null>(null);
 
-  // Always reflects latest items for debounced saves
   const itemsRef = useRef<Product[]>([]);
   useEffect(() => { itemsRef.current = items; }, [items]);
 
-  // Debounce map: productId → timeout handle
   const pendingUpdates = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
 
-  // Read sheet ID from localStorage; redirect to /sheets if missing
   useEffect(() => {
     const id = localStorage.getItem('inventori_sheet_id');
     if (!id) { router.replace('/sheets'); return; }
@@ -59,9 +60,6 @@ export default function InventoryPage() {
     setSheetName(localStorage.getItem('inventori_sheet_name') ?? '');
   }, [router]);
 
-  // Serve from cache immediately if fresh, always revalidate in background.
-  // AbortController cancels the fetch on unmount so no setState fires after
-  // navigation (which would block router.push via startTransition).
   useEffect(() => {
     if (!user || !sheetId) return;
 
@@ -95,14 +93,12 @@ export default function InventoryPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, sheetId]);
 
-  // Keep cache in sync so navigating away and back shows current state.
   useEffect(() => {
     if (sheetId && !productsLoading && items.length > 0) {
       productCache.set(sheetId, { products: items, ts: Date.now() });
     }
   }, [items, productsLoading, sheetId]);
 
-  // Persist count so other pages (Settings) can show it in the sidebar.
   useEffect(() => {
     if (!productsLoading) {
       localStorage.setItem('inventori_item_count', String(items.length));
@@ -211,99 +207,111 @@ export default function InventoryPage() {
     router.push('/login');
   }
 
-  if (!authLoading && !user) return null;
+  if (authLoading || !user) return null;
 
   return (
-    <div style={{ width: '100%', minHeight: '100vh', background: T.bg, color: T.ink, display: 'grid', gridTemplateColumns: '232px 1fr' }}>
-      <Sidebar user={user} onSignOut={handleSignOut} onChangeSheet={() => router.push('/sheets')} itemCount={items.length} sheetName={sheetName} />
+    <div style={{
+      width: '100%', minHeight: '100vh', background: T.bg, color: T.ink,
+      display: 'grid', gridTemplateColumns: '232px 1fr',
+    }}>
+      <Sidebar
+        user={user}
+        onSignOut={handleSignOut}
+        onChangeSheet={() => router.push('/sheets')}
+        activeTab={activeTab}
+        onTabChange={setActiveTab}
+        itemCount={items.length}
+        sheetName={sheetName}
+      />
 
-      <main style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
-        <Topbar query={query} setQuery={setQuery} />
+      {activeTab === 'inventory' && (
+        <main style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+          <Topbar query={query} setQuery={setQuery} />
 
-        <div style={{ padding: '20px 28px 32px', display: 'flex', flexDirection: 'column', gap: 18 }}>
-
-          {/* Page heading */}
-          <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 16 }}>
-            <div>
-              {sheetName && <div style={{ fontSize: 12, color: T.mute, marginBottom: 4 }}>{sheetName}</div>}
-              <h1 style={{ margin: 0, fontSize: 24, fontWeight: 600, letterSpacing: '-.02em' }}>Inventory</h1>
-            </div>
-            <div style={{ display: 'flex', gap: 8 }}>
-<Btn kind="primary" icon={<Icon.plus s={13} />} onClick={() => setAdding(true)}>Add product</Btn>
-            </div>
-          </div>
-
-          {/* KPI strip */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 }}>
-            <KpiCard label="Products"       value={kpis.skus}  sub="unique SKUs" />
-            <KpiCard label="Units on hand"  value={kpis.total} sub="across all categories" />
-            <KpiCard label="Low stock"      value={kpis.low}   sub={`${kpis.out} out of stock`}
-              tone="warn" onClick={() => setStatusFilter('low')} />
-            <KpiCard label="Inventory value"
-              value={'$' + kpis.value.toLocaleString(undefined, { maximumFractionDigits: 0 })}
-              sub="at cost" />
-          </div>
-
-          {/* Filters */}
-          <FilterBar
-            cat={cat} setCat={setCat}
-            statusFilter={statusFilter} setStatusFilter={setStatusFilter}
-            sort={sort} setSort={setSort}
-            count={filtered.length} total={items.length}
-            anyFilter={anyFilter} onClear={clearFilters}
-            categories={settings.categories}
-          />
-
-          {/* Table */}
-          <Panel style={{ overflow: 'hidden' }}>
-            {productsLoading ? (
-              <div style={{ minWidth: TABLE_MIN_WIDTH }}>
-                <TableHeader />
-                <SkeletonRows />
+          <div style={{ padding: '20px 28px 32px', display: 'flex', flexDirection: 'column', gap: 18 }}>
+            <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 16 }}>
+              <div>
+                {sheetName && <div style={{ fontSize: 12, color: T.mute, marginBottom: 4 }}>{sheetName}</div>}
+                <h1 style={{ margin: 0, fontSize: 24, fontWeight: 600, letterSpacing: '-.02em' }}>Inventory</h1>
               </div>
-            ) : (
-              <div style={{ overflowX: 'auto' }}>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <Btn kind="primary" icon={<Icon.plus s={13} />} onClick={() => setAdding(true)}>Add product</Btn>
+              </div>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 }}>
+              <KpiCard label="Products"       value={kpis.skus}  sub="unique SKUs" />
+              <KpiCard label="Units on hand"  value={kpis.total} sub="across all categories" />
+              <KpiCard label="Low stock"      value={kpis.low}   sub={`${kpis.out} out of stock`}
+                tone="warn" onClick={() => setStatusFilter('low')} />
+              <KpiCard label="Inventory value"
+                value={'$' + kpis.value.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                sub="at cost" />
+            </div>
+
+            <FilterBar
+              cat={cat} setCat={setCat}
+              statusFilter={statusFilter} setStatusFilter={setStatusFilter}
+              sort={sort} setSort={setSort}
+              count={filtered.length} total={items.length}
+              anyFilter={anyFilter} onClear={clearFilters}
+              categories={settings.categories}
+            />
+
+            <Panel style={{ overflow: 'hidden' }}>
+              {productsLoading ? (
                 <div style={{ minWidth: TABLE_MIN_WIDTH }}>
                   <TableHeader />
-                  {filtered.length === 0
-                    ? <EmptyState query={query} onClear={clearFilters} />
-                    : filtered.map(p => (
-                      <Row
-                        key={p.id} p={p}
-                        onSelect={() => setSelected(p.id)}
-                        onInc={() => updateStock(p.id, +1)}
-                        onDec={() => updateStock(p.id, -1)}
-                      />
-                    ))
-                  }
+                  <SkeletonRows />
                 </div>
-              </div>
-            )}
-          </Panel>
+              ) : (
+                <div style={{ overflowX: 'auto' }}>
+                  <div style={{ minWidth: TABLE_MIN_WIDTH }}>
+                    <TableHeader />
+                    {filtered.length === 0
+                      ? <EmptyState query={query} onClear={clearFilters} />
+                      : filtered.map(p => (
+                        <Row
+                          key={p.id} p={p}
+                          onSelect={() => setSelected(p.id)}
+                          onInc={() => updateStock(p.id, +1)}
+                          onDec={() => updateStock(p.id, -1)}
+                        />
+                      ))
+                    }
+                  </div>
+                </div>
+              )}
+            </Panel>
+          </div>
+
+          {selectedItem && (
+            <ProductDrawer
+              item={selectedItem}
+              onClose={() => setSelected(null)}
+              onChange={(patch) => updateItem(selectedItem.id, patch)}
+              onDelete={() => deleteItem(selectedItem.id)}
+              onInc={() => updateStock(selectedItem.id, +1)}
+              onDec={() => updateStock(selectedItem.id, -1)}
+            />
+          )}
+
+          {adding && <AddProductModal onClose={() => setAdding(false)} onAdd={addItem} />}
+        </main>
+      )}
+
+      {activeTab === 'intake' && (
+        <div style={{ display: 'flex', minHeight: '100vh', overflow: 'hidden' }}>
+          <IntakeTab />
         </div>
-      </main>
-
-      {selectedItem && (
-        <ProductDrawer
-          item={selectedItem}
-          onClose={() => setSelected(null)}
-          onChange={(patch) => updateItem(selectedItem.id, patch)}
-          onDelete={() => deleteItem(selectedItem.id)}
-          onInc={() => updateStock(selectedItem.id, +1)}
-          onDec={() => updateStock(selectedItem.id, -1)}
-        />
       )}
 
-      {adding && (
-        <AddProductModal onClose={() => setAdding(false)} onAdd={addItem} />
-      )}
+      {activeTab === 'settings' && <SettingsTab />}
 
       {toast && <Toast {...toast} />}
     </div>
   );
 }
-
-/* ── KPI card ── */
 
 interface KpiCardProps {
   label: string;

@@ -1,29 +1,22 @@
 'use client';
 
-import { useRouter, usePathname } from 'next/navigation';
-import { useNavigation } from '@/context/NavigationContext';
 import T from '@/lib/theme';
 import type { User } from '@/lib/types';
 import { Icon, type IconComponent } from '@/components/ui/Icon';
+
+export type AppTab = 'inventory' | 'intake' | 'settings';
 
 interface SidebarProps {
   user: User | null;
   onSignOut: () => void;
   onChangeSheet: () => void;
+  activeTab: AppTab;
+  onTabChange: (tab: AppTab) => void;
   itemCount?: number;
   sheetName?: string;
 }
 
-export default function Sidebar({ user, onSignOut, onChangeSheet, itemCount = 0, sheetName }: SidebarProps) {
-  const router = useRouter();
-  const pathname = usePathname();
-  const { startLoading } = useNavigation();
-
-  function navigate(to: string) {
-    if (to !== pathname) startLoading();
-    router.push(to);
-  }
-
+export default function Sidebar({ user, onSignOut, onChangeSheet, activeTab, onTabChange, itemCount = 0, sheetName }: SidebarProps) {
   return (
     <aside style={{
       background: T.panel, borderRight: `1px solid ${T.rule}`,
@@ -45,9 +38,10 @@ export default function Sidebar({ user, onSignOut, onChangeSheet, itemCount = 0,
 
       {/* Nav */}
       <nav style={{ padding: '12px 10px', display: 'flex', flexDirection: 'column', gap: 1, flex: 1 }}>
-        <NavItem icon={Icon.box}   label="Inventory" active={pathname === '/inventory'} onClick={() => navigate('/inventory')} count={itemCount} />
+        <NavItem icon={Icon.box}   label="Inventory" active={activeTab === 'inventory'} onClick={() => onTabChange('inventory')} count={itemCount} />
+        <NavItem icon={Icon.sheet} label="Intake"    active={activeTab === 'intake'}    onClick={() => onTabChange('intake')} />
         <NavItem icon={Icon.chart} label="Reports"   disabled hint="Soon" />
-        <NavItem icon={Icon.cog}   label="Settings"  active={pathname === '/settings'}  onClick={() => navigate('/settings')} />
+        <NavItem icon={Icon.cog}   label="Settings"  active={activeTab === 'settings'}  onClick={() => onTabChange('settings')} />
       </nav>
 
       {/* User footer */}
