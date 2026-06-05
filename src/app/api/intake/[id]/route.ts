@@ -18,22 +18,24 @@ function rowToLine(row: string[]): IntakeLine {
   return {
     id: lineId(),
     sku: row[0] ?? '',
-    name: row[1] ?? '',
-    qty: parseInt(row[2]) || 0,
-    cost: parseFloat(row[3]) || 0,
-    price: parseFloat(row[4]) || 0,
-    mfr: row[5] ?? '',
-    cat: row[6] ?? '',
-    grade: (row[7] as IntakeLine['grade']) || '—',
-    series: row[8] ?? '',
-    hue: parseInt(row[9]) || 0,
-    matched: row[10] === 'TRUE' || row[10] === 'true',
+    upc: row[1] ?? '',
+    name: row[2] ?? '',
+    qty: parseInt(row[3]) || 0,
+    cost: parseFloat(row[4]) || 0,
+    price: parseFloat(row[5]) || 0,
+    mfr: row[6] ?? '',
+    cat: row[7] ?? '',
+    grade: (row[8] as IntakeLine['grade']) || '—',
+    series: row[9] ?? '',
+    hue: parseInt(row[10]) || 0,
+    matched: row[11] === 'TRUE' || row[11] === 'true',
+    low: parseInt(row[12]) || 0,
     onHand: null,
   };
 }
 
 function lineToRow(l: IntakeLine): (string | number)[] {
-  return [l.sku, l.name, l.qty, l.cost, l.price, l.mfr, l.cat, l.grade, l.series, l.hue, String(l.matched)];
+  return [l.sku, l.upc, l.name, l.qty, l.cost, l.price, l.mfr, l.cat, l.grade, l.series, l.hue, String(l.matched), l.low];
 }
 
 type Ctx = { params: Promise<{ id: string }> };

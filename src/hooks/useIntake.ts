@@ -30,7 +30,9 @@ export function useIntake(initialLines: IntakeLine[] = [], catalog: Product[] = 
         p.sku.toUpperCase() === code || (p.upc && p.upc.toUpperCase() === code)
       );
       const matchKey = known ? known.sku.toUpperCase() : code;
-      const i = prev.findIndex(l => l.sku.toUpperCase() === matchKey);
+      const i = prev.findIndex(l =>
+        l.sku.toUpperCase() === matchKey || (l.upc && l.upc.toUpperCase() === code)
+      );
       if (i >= 0) {
         const next = [...prev];
         next[i] = { ...next[i], qty: next[i].qty + 1 };

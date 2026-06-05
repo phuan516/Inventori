@@ -93,6 +93,21 @@ export default function AppPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, sheetId]);
 
+  function reloadInventory() {
+    if (!sheetId) return;
+    productCache.delete(sheetId);
+    setProductsLoading(true);
+    fetch(`/api/sheets/${sheetId}`)
+      .then(r => r.json())
+      .then(data => {
+        const products: Product[] = data.products ?? [];
+        productCache.set(sheetId, { products, ts: Date.now() });
+        setItems(products);
+        setProductsLoading(false);
+      })
+      .catch(() => { showToast('Failed to refresh inventory', 'warn'); setProductsLoading(false); });
+  }
+
   useEffect(() => {
     if (sheetId && !productsLoading && items.length > 0) {
       productCache.set(sheetId, { products: items, ts: Date.now() });
@@ -311,7 +326,7 @@ export default function AppPage() {
 
       {activeTab === 'intake' && (
         <div style={{ display: 'flex', minHeight: '100vh', overflow: 'hidden' }}>
-          <IntakeTab />
+          <IntakeTab onInventoryChanged={reloadInventory} />
         </div>
       )}
 

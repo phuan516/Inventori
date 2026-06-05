@@ -74,7 +74,7 @@ export default function LedgerRow({ l, flash, open, onToggleSetup, onBump, onCos
           )}
         </div>
 
-        <span style={{ fontFamily: T.fontMono, fontSize: 12, color: T.ink2 }}>{l.sku}</span>
+        <span style={{ fontFamily: T.fontMono, fontSize: 12, color: T.ink2 }}>{l.upc || l.sku}</span>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
           <StepBtn onClick={() => onBump(-1)} disabled={l.qty === 0}>

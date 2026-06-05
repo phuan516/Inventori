@@ -83,7 +83,7 @@ function LedgerSkeleton() {
   );
 }
 
-export default function IntakeTab() {
+export default function IntakeTab({ onInventoryChanged }: { onInventoryChanged?: () => void }) {
   const storeId = useRef<string | null>(null);
   const [intakes, setIntakes] = useState<IntakeSession[]>([]);
   const [selectedIntake, setSelectedIntake] = useState<IntakeSession | null>(null);
@@ -154,11 +154,11 @@ export default function IntakeTab() {
   }
 
   async function handleCommitted() {
-    // Refresh list so the committed intake shows the updated status
     if (storeId.current) {
       const data = await fetch(`/api/intake?storeId=${storeId.current}`).then(r => r.json());
       setIntakes(data.intakes ?? []);
     }
+    onInventoryChanged?.();
   }
 
   if (!storeId.current && !loadingIntakes) {
