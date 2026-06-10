@@ -30,6 +30,7 @@ export default function AppPage() {
   const { settings } = useSettings();
 
   const [activeTab, setActiveTab] = useState<AppTab>('inventory');
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   // Redirect to login if not signed in
   useEffect(() => {
@@ -235,7 +236,8 @@ export default function AppPage() {
   return (
     <div style={{
       width: '100%', minHeight: '100vh', background: T.bg, color: T.ink,
-      display: 'grid', gridTemplateColumns: '232px 1fr',
+      display: 'grid', gridTemplateColumns: `${sidebarCollapsed ? 56 : 232}px 1fr`,
+      transition: 'grid-template-columns 180ms ease',
     }}>
       <Sidebar
         user={user}
@@ -245,6 +247,8 @@ export default function AppPage() {
         onTabChange={setActiveTab}
         itemCount={items.length}
         sheetName={sheetName}
+        collapsed={sidebarCollapsed}
+        onToggle={() => setSidebarCollapsed(c => !c)}
       />
 
       {activeTab === 'inventory' && (
