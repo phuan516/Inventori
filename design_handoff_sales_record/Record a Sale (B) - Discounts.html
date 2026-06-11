@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Inventori — Sale Discounts (Direction B)</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    html, body { margin: 0; background: #f0eee9; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif; }
+    *, *::before, *::after { box-sizing: border-box; }
+  </style>
+
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script type="text/babel" src="design-canvas.jsx"></script>
+  <script type="text/babel" src="app/icons.jsx"></script>
+  <script type="text/babel" src="app/sales-kit.jsx"></script>
+  <script type="text/babel" src="app/sales-discounts.jsx"></script>
+  <script type="text/babel" src="app/sales-discount-screens.jsx"></script>
+
+  <script type="text/babel" data-presets="react">
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(
+      <DesignCanvas>
+        <DCSection
+          id="register"
+          title="01 · Discounts in the register"
+          subtitle="Direction B (scan-first ticket) with discount affordances. Discounts are price adjustments on the Sale record — no tax, no tender."
+        >
+          <DCArtboard id="rest" label="A · At rest — where discounts live" width={1180} height={860}>
+            <RegisterRest />
+          </DCArtboard>
+          <DCArtboard id="applied" label="B · Three discounts applied" width={1180} height={980}>
+            <RegisterApplied />
+          </DCArtboard>
+          <DCPostIt top={900} left={60} width={440} rotate={-1}>
+            <strong>Every line gets a dashed “Add discount” tag</strong> under the item. The
+            top-bar “Held” and the actions row gain <strong>“Add sale discount”</strong> for the
+            whole ticket. Nothing else about Direction B changes.
+          </DCPostIt>
+          <DCPostIt top={1020} left={1290} width={460} rotate={1}>
+            <strong>Applied state</strong> — Nu Gundam has a <strong>−10% item discount</strong>,
+            the Gouf has a <strong>partial</strong> (1 of 2 units, damaged), plus a
+            <strong> 10% sale discount</strong>. The <strong>Totals card</strong> breaks out
+            subtotal → item discounts → sale discount → sale total.
+          </DCPostIt>
+        </DCSection>
+
+        <DCSection
+          id="item"
+          title="02 · Item discount popover"
+          subtitle="Tapping a line's discount tag opens this. % off, $ off, or set a new unit price — with an optional reason for the books."
+        >
+          <DCArtboard id="q1" label="A · Single unit (qty = 1)" width={720} height={560}>
+            <ItemPopoverQ1 />
+          </DCArtboard>
+          <DCArtboard id="qn" label="B · Multi-unit (qty > 1) — partial control" width={720} height={680}>
+            <ItemPopoverQN />
+          </DCArtboard>
+          <DCPostIt top={720} left={60} width={460} rotate={-1}>
+            Three discount <strong>types</strong> share one control: <strong>% off</strong>,
+            <strong> $ off</strong>, or <strong>Set price</strong> (override the unit price).
+            Quick chips for common values. Reason is optional metadata on the sale.
+          </DCPostIt>
+          <DCPostIt top={720} left={820} width={470} rotate={1}>
+            When <strong>qty &gt; 1</strong>, an <strong>“Apply to”</strong> block appears:
+            all units, or <strong>part of the quantity</strong> with a stepper —
+            the answer to “discount one damaged unit out of several.”
+          </DCPostIt>
+        </DCSection>
+
+        <DCSection
+          id="partial"
+          title="03 · Partial quantity & sale discount"
+          subtitle="How a part-discounted line reads, and the whole-ticket discount with live totals."
+        >
+          <DCArtboard id="detail" label="A · Partial line — split breakdown" width={720} height={420}>
+            <PartialDetail />
+          </DCArtboard>
+          <DCArtboard id="sale" label="B · Sale-level discount + totals" width={780} height={520}>
+            <SalePopover />
+          </DCArtboard>
+          <DCPostIt top={560} left={60} width={460} rotate={-1}>
+            A partially-discounted line keeps <strong>one qty stepper</strong> but shows a
+            <strong> breakdown</strong>: full-price units vs. discounted units with their reason.
+            Stock still deducts the full quantity.
+          </DCPostIt>
+          <DCPostIt top={560} left={860} width={460} rotate={1}>
+            <strong>Sale discount stacks</strong> on top of item discounts and recomputes live.
+            Still <strong>no tax / no tender</strong> — Inventori records only the adjusted sale value.
+          </DCPostIt>
+        </DCSection>
+      </DesignCanvas>
+    );
+  </script>
+</body>
+</html>

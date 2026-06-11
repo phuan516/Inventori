@@ -14,6 +14,7 @@ import { TableHeader, Row, EmptyState, SkeletonRows, TABLE_MIN_WIDTH } from '@/c
 import ProductDrawer from '@/components/inventory/ProductDrawer';
 import AddProductModal from '@/components/inventory/AddProductModal';
 import IntakeTab from '@/components/intake/IntakeTab';
+import SalesTab from '@/components/sales/SalesTab';
 import SettingsTab from '@/components/settings/SettingsTab';
 import Panel from '@/components/ui/Panel';
 import Btn from '@/components/ui/Btn';
@@ -39,6 +40,8 @@ export default function AppPage() {
 
   const [sheetId, setSheetId] = useState<string | null>(null);
   const [sheetName, setSheetName] = useState<string>('');
+  const [salesSheetId, setSalesSheetId] = useState<string | null>(null);
+  const [holdSheetId, setHoldSheetId] = useState<string | null>(null);
   const [items, setItems] = useState<Product[]>([]);
   const [productsLoading, setProductsLoading] = useState(true);
   const [query, setQuery] = useState('');
@@ -59,6 +62,8 @@ export default function AppPage() {
     if (!id) { router.replace('/sheets'); return; }
     setSheetId(id);
     setSheetName(localStorage.getItem('inventori_sheet_name') ?? '');
+    setSalesSheetId(localStorage.getItem('inventori_sales_sheet_id') ?? null);
+    setHoldSheetId(localStorage.getItem('inventori_hold_sheet_id') ?? null);
   }, [router]);
 
   useEffect(() => {
@@ -332,6 +337,17 @@ export default function AppPage() {
         <div style={{ display: 'flex', minHeight: '100vh', overflow: 'hidden' }}>
           <IntakeTab onInventoryChanged={reloadInventory} />
         </div>
+      )}
+
+      {activeTab === 'sales' && (
+        <SalesTab
+          products={items}
+          sheetName={sheetName}
+          salesSheetId={salesSheetId}
+          holdSheetId={holdSheetId}
+          onStockUpdate={updateStock}
+          onToast={showToast}
+        />
       )}
 
       {activeTab === 'settings' && <SettingsTab />}

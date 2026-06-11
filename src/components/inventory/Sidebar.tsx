@@ -4,7 +4,7 @@ import T from '@/lib/theme';
 import type { User } from '@/lib/types';
 import { Icon, type IconComponent } from '@/components/ui/Icon';
 
-export type AppTab = 'inventory' | 'intake' | 'settings';
+export type AppTab = 'inventory' | 'intake' | 'sales' | 'settings';
 
 interface SidebarProps {
   user: User | null;
@@ -57,6 +57,7 @@ export default function Sidebar({ user, onSignOut, onChangeSheet, activeTab, onT
         gap: c ? 2 : 1, flex: 1,
       }}>
         <NavItem icon={Icon.box}   label="Inventory" active={activeTab === 'inventory'} onClick={() => onTabChange('inventory')} count={itemCount} collapsed={c} />
+        <NavItem icon={Icon.cart}  label="Sales"     active={activeTab === 'sales'}     onClick={() => onTabChange('sales')} collapsed={c} />
         <NavItem icon={Icon.inbox} label="Intake"    active={activeTab === 'intake'}    onClick={() => onTabChange('intake')} collapsed={c} />
         <NavItem icon={Icon.chart} label="Reports"   disabled hint="Soon" collapsed={c} />
         <NavItem icon={Icon.cog}   label="Settings"  active={activeTab === 'settings'}  onClick={() => onTabChange('settings')} collapsed={c} />
@@ -162,13 +163,14 @@ interface NavItemProps {
   label: string;
   active?: boolean;
   count?: number;
+  badge?: string;
   disabled?: boolean;
   hint?: string;
   collapsed?: boolean;
   onClick?: () => void;
 }
 
-function NavItem({ icon: I, label, active, count, disabled, hint, collapsed, onClick }: NavItemProps) {
+function NavItem({ icon: I, label, active, count, badge, disabled, hint, collapsed, onClick }: NavItemProps) {
   return (
     <div
       role={onClick && !disabled ? 'button' : undefined}
@@ -200,6 +202,12 @@ function NavItem({ icon: I, label, active, count, disabled, hint, collapsed, onC
           fontSize: 10.5, fontFamily: T.fontMono, padding: '1px 6px', borderRadius: 100,
           background: active ? '#fff' : T.rule2, color: active ? T.brand : T.mute, fontWeight: 600,
         }}>{count}</span>
+      )}
+      {!collapsed && badge && (
+        <span style={{
+          fontSize: 9.5, fontWeight: 700, padding: '2px 6px', borderRadius: 100,
+          background: active ? T.brand : T.ink, color: '#fff', letterSpacing: '.02em',
+        }}>{badge}</span>
       )}
       {!collapsed && hint && <span style={{ fontSize: 10, color: T.faint }}>{hint}</span>}
     </div>

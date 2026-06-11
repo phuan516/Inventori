@@ -77,6 +77,8 @@ export default function SheetsPage() {
       localStorage.setItem('inventori_store_id', data.folderId);
       localStorage.setItem('inventori_sheet_id', data.sheetId);
       localStorage.setItem('inventori_sheet_name', data.name ?? fullName);
+      if (data.salesSheetId) localStorage.setItem('inventori_sales_sheet_id', data.salesSheetId);
+      if (data.holdSheetId) localStorage.setItem('inventori_hold_sheet_id', data.holdSheetId);
       router.push('/inventory');
     } catch (e: unknown) {
       setCreateError(e instanceof Error ? e.message : 'Failed to create store');
@@ -238,6 +240,9 @@ export default function SheetsPage() {
                   localStorage.setItem('inventori_store_id', store.id);
                   localStorage.setItem('inventori_sheet_id', store.sheetId);
                   localStorage.setItem('inventori_sheet_name', store.name ?? '');
+                  // Clear stale sheet IDs from any previously selected store
+                  localStorage.removeItem('inventori_sales_sheet_id');
+                  localStorage.removeItem('inventori_hold_sheet_id');
                   setSelectedId(store.id);
                   router.push('/inventory');
                 }}

@@ -26,3 +26,21 @@ export interface User {
   initials: string;
   tone: string;
 }
+
+export interface TicketLine {
+  sku: string;
+  name: string;
+  price: number;
+  qty: number;
+}
+
+export interface Sale {
+  id: string;
+  createdAt: string;
+  lines: { sku: string; name: string; qty: number; price: number }[];
+  total: number;
+  unitCount: number;
+  customer?: string;
+  note?: string;
+  recordedBy: string;
+}

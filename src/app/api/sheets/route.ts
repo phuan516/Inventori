@@ -133,9 +133,79 @@ export async function POST(req: NextRequest) {
     fields: 'id',
   });
 
+  // 5. Create Sales subfolder
+  const salesFolderRes = await drive.files.create({
+    requestBody: {
+      name: 'Sales',
+      mimeType: 'application/vnd.google-apps.folder',
+      parents: [folderId],
+    },
+    fields: 'id',
+  });
+  const salesFolderId = salesFolderRes.data.id!;
+
+  // 6. Create Sales spreadsheet with current month tab
+  const salesSsRes = await sheetsApi.spreadsheets.create({
+    requestBody: { properties: { title: 'Sales' } },
+    fields: 'spreadsheetId,sheets/properties/sheetId',
+  });
+  const salesSheetId = salesSsRes.data.spreadsheetId!;
+  const salesDefaultSheetId = salesSsRes.data.sheets?.[0]?.properties?.sheetId ?? 0;
+
+  const now = new Date();
+  const monthTabName = `${now.toLocaleString('en-US', { month: 'long' })}-${now.getFullYear()}`;
+
+  await sheetsApi.spreadsheets.batchUpdate({
+    spreadsheetId: salesSheetId,
+    requestBody: {
+      requests: [{ updateSheetProperties: { properties: { sheetId: salesDefaultSheetId, title: monthTabName }, fields: 'title' } }],
+    },
+  });
+  await sheetsApi.spreadsheets.values.update({
+    spreadsheetId: salesSheetId,
+    range: `'${monthTabName}'!A1`,
+    valueInputOption: 'RAW',
+    requestBody: { values: [['ID', 'Date', 'Time', 'Customer', 'SKU', 'Name', 'Qty', 'Unit Price', 'Discount', 'Effective Price', 'Line Total', 'Sale Discount', 'Total']] },
+  });
+  await drive.files.update({
+    fileId: salesSheetId,
+    addParents: salesFolderId,
+    removeParents: 'root',
+    fields: 'id',
+  });
+
+  // 7. Create Hold spreadsheet
+  const holdSsRes = await sheetsApi.spreadsheets.create({
+    requestBody: { properties: { title: 'Hold' } },
+    fields: 'spreadsheetId,sheets/properties/sheetId',
+  });
+  const holdSheetId = holdSsRes.data.spreadsheetId!;
+  const holdDefaultSheetId = holdSsRes.data.sheets?.[0]?.properties?.sheetId ?? 0;
+
+  await sheetsApi.spreadsheets.batchUpdate({
+    spreadsheetId: holdSheetId,
+    requestBody: {
+      requests: [{ updateSheetProperties: { properties: { sheetId: holdDefaultSheetId, title: 'Hold' }, fields: 'title' } }],
+    },
+  });
+  await sheetsApi.spreadsheets.values.update({
+    spreadsheetId: holdSheetId,
+    range: 'Hold!A1',
+    valueInputOption: 'RAW',
+    requestBody: { values: [['ID', 'Date', 'Time', 'Customer', 'SKU', 'Name', 'Qty', 'Unit Price', 'Discount JSON', 'Effective Price', 'Line Total', 'Sale Discount JSON', 'Total']] },
+  });
+  await drive.files.update({
+    fileId: holdSheetId,
+    addParents: salesFolderId,
+    removeParents: 'root',
+    fields: 'id',
+  });
+
   return NextResponse.json({
     folderId,
     sheetId: spreadsheetId,
+    salesSheetId,
+    holdSheetId,
     name: folderRes.data.name,
     modifiedTime: folderRes.data.modifiedTime,
   }, { status: 201 });
