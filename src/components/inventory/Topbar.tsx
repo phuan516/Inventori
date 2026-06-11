@@ -12,7 +12,8 @@ export default function Topbar({ query, setQuery }: TopbarProps) {
     <header style={{
       position: 'sticky', top: 0, zIndex: 5, background: T.panel,
       display: 'flex', alignItems: 'center', gap: 12,
-      padding: '12px 28px', borderBottom: `1px solid ${T.rule}`,
+      height: 56, flexShrink: 0,
+      padding: '0 28px', borderBottom: `1px solid ${T.rule}`,
     }}>
       <div style={{ flex: 1, maxWidth: 480, position: 'relative' }}>
         <span style={{ position: 'absolute', left: 11, top: '50%', transform: 'translateY(-50%)', color: T.mute, pointerEvents: 'none' }}>

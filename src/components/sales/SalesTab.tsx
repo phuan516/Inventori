@@ -1131,7 +1131,8 @@ function SalesTopbar() {
     <header style={{
       position: 'sticky', top: 0, zIndex: 5, background: T.panel,
       display: 'flex', alignItems: 'center',
-      padding: '12px 28px', borderBottom: `1px solid ${T.rule}`,
+      height: 56, flexShrink: 0,
+      padding: '0 28px', borderBottom: `1px solid ${T.rule}`,
     }}>
       <div style={{ flex: 1 }} />
       <button

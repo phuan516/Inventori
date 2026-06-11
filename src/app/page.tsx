@@ -423,7 +423,7 @@ function HeroVisual() {
         boxShadow: '0 30px 80px -30px rgba(15,20,25,.18), 0 4px 12px rgba(15,20,25,.04)',
         overflow: 'hidden',
       }}>
-        <WindowChrome label="inventori.app / inventory" />
+        <WindowChrome label="inventori.app / dashboard" />
         <div style={{ padding: 16 }}>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 8, marginBottom: 12 }}>
             {[

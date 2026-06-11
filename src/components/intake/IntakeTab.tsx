@@ -178,7 +178,7 @@ export default function IntakeTab({ onInventoryChanged }: { onInventoryChanged?:
         background: T.panel, borderRight: `1px solid ${T.rule}`,
         display: 'flex', flexDirection: 'column', minHeight: 0,
       }}>
-        <div style={{ padding: '17px 16px 14px', borderBottom: `1px solid ${T.rule2}` }}>
+        <div style={{ height: 56, flexShrink: 0, padding: '0 16px', borderBottom: `1px solid ${T.rule2}`, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
           <div style={{ fontSize: 14.5, fontWeight: 600, letterSpacing: '-.01em' }}>Intake</div>
           <div style={{ fontSize: 11.5, color: T.mute, marginTop: 1 }}>Receiving sessions</div>
         </div>
