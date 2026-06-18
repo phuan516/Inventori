@@ -86,6 +86,14 @@ export default function SalesTab({ products, sheetName, salesSheetId: salesSheet
   useEffect(() => { setSalesSheetId(salesSheetIdProp); }, [salesSheetIdProp]);
   useEffect(() => { setHoldSheetId(holdSheetIdProp); }, [holdSheetIdProp]);
 
+  // Resolve sheet IDs when opening history without a salesSheetId
+  useEffect(() => {
+    if (subTab === 'history' && !salesSheetId) {
+      ensureSheets().catch(() => {});
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [subTab]);
+
   // Ensure Sales folder, Sales sheet, and Hold sheet exist — creates them if missing.
   // Returns the resolved IDs, or null if storeId is unavailable.
   async function ensureSheets(): Promise<{ salesSheetId: string; holdSheetId: string } | null> {

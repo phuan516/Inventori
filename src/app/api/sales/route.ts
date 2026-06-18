@@ -21,9 +21,12 @@ export async function GET(req: NextRequest) {
 
   const fromStr = searchParams.get('from');
   const toStr = searchParams.get('to');
-  const fromDate = fromStr ? new Date(fromStr) : (() => { const d = new Date(); d.setDate(d.getDate() - 7); d.setHours(0, 0, 0, 0); return d; })();
-  const toDate = toStr ? new Date(toStr) : new Date();
-  toDate.setHours(23, 59, 59, 999);
+  const toYMD = (d: Date) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  const filterByDate = !!(fromStr || toStr);
+  const fromYMD = fromStr ?? '';
+  const toYMD_ = toStr ?? '';
+  const fromDate = filterByDate ? new Date(fromYMD) : null;
+  const toDate = filterByDate ? (() => { const d = new Date(toYMD_); d.setUTCHours(23, 59, 59, 999); return d; })() : null;
 
   const auth = makeAuth(session.accessToken);
   const sheetsApi = google.sheets({ version: 'v4', auth });
@@ -31,15 +34,15 @@ export async function GET(req: NextRequest) {
   const ss = await sheetsApi.spreadsheets.get({ spreadsheetId: salesSheetId, fields: 'sheets/properties' });
   const allTabs = ss.data.sheets?.map(s => s.properties?.title ?? '').filter(Boolean) ?? [];
 
-  // Find month tabs (format: "Month-Year") that overlap the requested range
   const relevantTabs = allTabs.filter(name => {
     const match = name.match(/^(\w+)-(\d{4})$/);
     if (!match) return false;
+    if (!filterByDate) return true;
     const tabDate = new Date(`${match[1]} 1, ${match[2]}`);
     if (isNaN(tabDate.getTime())) return false;
     const tabEnd = new Date(tabDate.getFullYear(), tabDate.getMonth() + 1, 0);
     tabEnd.setHours(23, 59, 59, 999);
-    return tabDate <= toDate && tabEnd >= fromDate;
+    return tabDate <= toDate! && tabEnd >= fromDate!;
   });
 
   const undoneIds = new Set<string>();
@@ -71,10 +74,12 @@ export async function GET(req: NextRequest) {
       }
 
       const dateStr = String(row[1] ?? '');
-      const parsedDate = new Date(dateStr);
-      if (isNaN(parsedDate.getTime())) continue;
-      parsedDate.setHours(0, 0, 0, 0);
-      if (parsedDate < fromDate || parsedDate > toDate) continue;
+      if (filterByDate) {
+        const parsedDate = new Date(dateStr);
+        if (isNaN(parsedDate.getTime())) continue;
+        const rowYMD = toYMD(parsedDate);
+        if (rowYMD < fromYMD || rowYMD > toYMD_) continue;
+      }
 
       const line = {
         sku: String(row[4] ?? ''),
