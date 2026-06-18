@@ -7,6 +7,7 @@ import ImgPlaceholder from '@/components/ui/ImgPlaceholder';
 import Panel from '@/components/ui/Panel';
 import Btn from '@/components/ui/Btn';
 import type { Product, TicketLine } from '@/lib/types';
+import SalesHistoryTab from './SalesHistoryTab';
 
 const money = (n: number) => '$' + n.toFixed(2);
 
@@ -62,6 +63,7 @@ interface SalesTabProps {
 }
 
 export default function SalesTab({ products, sheetName, salesSheetId: salesSheetIdProp, holdSheetId: holdSheetIdProp, onStockUpdate, onToast }: SalesTabProps) {
+  const [subTab, setSubTab] = useState<'register' | 'history'>('register');
   const [ticket, setTicket] = useState<TicketLine[]>([]);
   const [heldTickets, setHeldTickets] = useState<HeldTicket[]>([]);
   const [lastAddedSku, setLastAddedSku] = useState<string | null>(null);
@@ -302,8 +304,19 @@ export default function SalesTab({ products, sheetName, salesSheetId: salesSheet
 
   return (
     <main style={{ display: 'flex', flexDirection: 'column', minWidth: 0, flex: 1, position: 'relative' }}>
-      <SalesTopbar />
+      <SalesTopbar subTab={subTab} onTabChange={setSubTab} />
 
+      {subTab === 'history' && (
+        <SalesHistoryTab
+          salesSheetId={salesSheetId}
+          sheetName={sheetName}
+          onStockUpdate={onStockUpdate}
+          onToast={onToast}
+        />
+      )}
+
+      {subTab === 'register' && (
+      <>
       <div style={{ flex: 1, overflow: 'auto', display: 'flex', justifyContent: 'center', padding: '24px 24px 110px' }}>
         <div style={{ width: '100%', maxWidth: 680, display: 'flex', flexDirection: 'column', gap: 18 }}>
 
@@ -515,6 +528,8 @@ export default function SalesTab({ products, sheetName, salesSheetId: salesSheet
           {isRecording ? 'Recording…' : 'Record sale'}
         </Btn>
       </div>
+      </>
+      )}
     </main>
   );
 }
@@ -1126,18 +1141,45 @@ function Stepper({ sign, onClick, disabled }: { sign: string; onClick: () => voi
 
 /* ─── SalesTopbar ─── */
 
-function SalesTopbar() {
+const SALES_TABS = [
+  { id: 'register' as const, label: 'Register', Icon: Icon.cart },
+  { id: 'history'  as const, label: 'History',  Icon: Icon.clock },
+];
+
+function SalesTopbar({ subTab, onTabChange }: { subTab: 'register' | 'history'; onTabChange: (t: 'register' | 'history') => void }) {
   return (
     <header style={{
       position: 'sticky', top: 0, zIndex: 5, background: T.panel,
-      display: 'flex', alignItems: 'center',
+      display: 'flex', alignItems: 'stretch', gap: 16,
       height: 56, flexShrink: 0,
-      padding: '0 28px', borderBottom: `1px solid ${T.rule}`,
+      padding: '0 24px', borderBottom: `1px solid ${T.rule}`,
     }}>
+      <div style={{ display: 'flex', gap: 4, alignItems: 'stretch' }}>
+        {SALES_TABS.map(tab => {
+          const active = tab.id === subTab;
+          return (
+            <button
+              key={tab.id}
+              onClick={() => onTabChange(tab.id)}
+              style={{
+                display: 'inline-flex', alignItems: 'center', gap: 7,
+                fontSize: 13.5, fontWeight: active ? 600 : 400,
+                color: active ? T.ink : T.mute,
+                padding: '0 14px', background: 'transparent', border: 'none', cursor: 'pointer',
+                borderBottom: `2px solid ${active ? T.ink : 'transparent'}`,
+                marginBottom: -1, fontFamily: 'inherit',
+              }}
+            >
+              <tab.Icon s={14} />{tab.label}
+            </button>
+          );
+        })}
+      </div>
       <div style={{ flex: 1 }} />
       <button
         title="Notifications"
         style={{
+          alignSelf: 'center',
           width: 34, height: 34, background: T.panel, border: `1px solid ${T.rule}`,
           borderRadius: 7, color: T.ink2, cursor: 'pointer',
           display: 'grid', placeItems: 'center', position: 'relative',

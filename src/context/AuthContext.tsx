@@ -39,6 +39,12 @@ function AuthContextInner({ children }: { children: ReactNode }) {
   const loading = status === 'loading';
   const user = sessionToUser(session);
 
+  // If the refresh token has expired, force re-auth so the user doesn't get stuck
+  // with silent 401s from Google APIs.
+  if (session?.error === 'RefreshAccessTokenError') {
+    nextSignIn('google', { callbackUrl: '/sheets' }, { prompt: 'consent' });
+  }
+
   function signIn(callbackUrl = '/sheets') {
     nextSignIn('google', { callbackUrl }, { prompt: 'select_account' });
   }

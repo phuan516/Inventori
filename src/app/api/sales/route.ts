@@ -11,6 +11,108 @@ function makeAuth(accessToken: string) {
 
 const HEADERS = ['ID', 'Date', 'Time', 'Customer', 'SKU', 'Name', 'Qty', 'Unit Price', 'Discount', 'Effective Price', 'Line Total', 'Sale Discount', 'Total'];
 
+export async function GET(req: NextRequest) {
+  const session = await getServerSession(authOptions);
+  if (!session?.accessToken) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+  const { searchParams } = new URL(req.url);
+  const salesSheetId = searchParams.get('salesSheetId');
+  if (!salesSheetId) return NextResponse.json({ error: 'Missing salesSheetId' }, { status: 400 });
+
+  const fromStr = searchParams.get('from');
+  const toStr = searchParams.get('to');
+  const fromDate = fromStr ? new Date(fromStr) : (() => { const d = new Date(); d.setDate(d.getDate() - 7); d.setHours(0, 0, 0, 0); return d; })();
+  const toDate = toStr ? new Date(toStr) : new Date();
+  toDate.setHours(23, 59, 59, 999);
+
+  const auth = makeAuth(session.accessToken);
+  const sheetsApi = google.sheets({ version: 'v4', auth });
+
+  const ss = await sheetsApi.spreadsheets.get({ spreadsheetId: salesSheetId, fields: 'sheets/properties' });
+  const allTabs = ss.data.sheets?.map(s => s.properties?.title ?? '').filter(Boolean) ?? [];
+
+  // Find month tabs (format: "Month-Year") that overlap the requested range
+  const relevantTabs = allTabs.filter(name => {
+    const match = name.match(/^(\w+)-(\d{4})$/);
+    if (!match) return false;
+    const tabDate = new Date(`${match[1]} 1, ${match[2]}`);
+    if (isNaN(tabDate.getTime())) return false;
+    const tabEnd = new Date(tabDate.getFullYear(), tabDate.getMonth() + 1, 0);
+    tabEnd.setHours(23, 59, 59, 999);
+    return tabDate <= toDate && tabEnd >= fromDate;
+  });
+
+  const undoneIds = new Set<string>();
+  const salesMap = new Map<string, {
+    id: string; date: string; time: string; customer: string;
+    lines: { sku: string; name: string; qty: number; unitPrice: number; discount: string; effectivePrice: number; lineTotal: number }[];
+    saleDiscount: string; total: number;
+  }>();
+
+  for (const tab of relevantTabs) {
+    let resp;
+    try {
+      resp = await sheetsApi.spreadsheets.values.get({
+        spreadsheetId: salesSheetId,
+        range: `'${tab}'!A:M`,
+      });
+    } catch {
+      continue;
+    }
+    const rows = resp.data.values ?? [];
+    for (let i = 1; i < rows.length; i++) {
+      const row = rows[i];
+      if (!row?.[0]) continue;
+      const id = String(row[0]);
+
+      if (id.startsWith('UNDO-')) {
+        undoneIds.add(id.slice(5));
+        continue;
+      }
+
+      const dateStr = String(row[1] ?? '');
+      const parsedDate = new Date(dateStr);
+      if (isNaN(parsedDate.getTime())) continue;
+      parsedDate.setHours(0, 0, 0, 0);
+      if (parsedDate < fromDate || parsedDate > toDate) continue;
+
+      const line = {
+        sku: String(row[4] ?? ''),
+        name: String(row[5] ?? ''),
+        qty: parseInt(String(row[6] ?? '0'), 10) || 0,
+        unitPrice: parseFloat(String(row[7] ?? '0')) || 0,
+        discount: String(row[8] ?? ''),
+        effectivePrice: parseFloat(String(row[9] ?? '0')) || 0,
+        lineTotal: parseFloat(String(row[10] ?? '0')) || 0,
+      };
+
+      if (salesMap.has(id)) {
+        salesMap.get(id)!.lines.push(line);
+      } else {
+        salesMap.set(id, {
+          id,
+          date: dateStr,
+          time: String(row[2] ?? ''),
+          customer: String(row[3] ?? ''),
+          lines: [line],
+          saleDiscount: String(row[11] ?? ''),
+          total: parseFloat(String(row[12] ?? '0')) || 0,
+        });
+      }
+    }
+  }
+
+  const sales = Array.from(salesMap.values())
+    .map(s => ({ ...s, status: undoneIds.has(s.id) ? 'undone' : 'recorded' as const }))
+    .sort((a, b) => {
+      const da = new Date(`${a.date} ${a.time}`).getTime();
+      const db = new Date(`${b.date} ${b.time}`).getTime();
+      return db - da;
+    });
+
+  return NextResponse.json({ sales });
+}
+
 export async function POST(req: NextRequest) {
   const session = await getServerSession(authOptions);
   if (!session?.accessToken) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -23,11 +125,9 @@ export async function POST(req: NextRequest) {
   const auth = makeAuth(session.accessToken);
   const sheetsApi = google.sheets({ version: 'v4', auth });
 
-  // Tab name for current month: e.g. "June-2026"
   const now = new Date();
   const tabName = `${now.toLocaleString('en-US', { month: 'long' })}-${now.getFullYear()}`;
 
-  // Create the month tab if it doesn't exist yet
   const ss = await sheetsApi.spreadsheets.get({ spreadsheetId: salesSheetId, fields: 'sheets/properties' });
   const tabExists = ss.data.sheets?.some(s => s.properties?.title === tabName);
   if (!tabExists) {
@@ -43,15 +143,9 @@ export async function POST(req: NextRequest) {
     });
   }
 
-  // One row per line item; sale discount and sale total only on first row
   const rows = lines.map((l: { sku: string; name: string; qty: number; unitPrice: number; discount: string; effectivePrice: number; lineTotal: number }, i: number) => [
-    saleId,
-    date,
-    time,
-    customer ?? '',
-    l.sku,
-    l.name,
-    l.qty,
+    saleId, date, time, customer ?? '',
+    l.sku, l.name, l.qty,
     Number(l.unitPrice).toFixed(2),
     l.discount ?? '',
     Number(l.effectivePrice).toFixed(2),
