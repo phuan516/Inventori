@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useContext, type ReactNode } from 'react';
+import { createContext, useContext, useEffect, useRef, useCallback, type ReactNode } from 'react';
 import {
   SessionProvider,
   useSession,
@@ -38,23 +38,30 @@ function AuthContextInner({ children }: { children: ReactNode }) {
   const { data: session, status } = useSession();
   const loading = status === 'loading';
   const user = sessionToUser(session);
+  const signingOut = useRef(false);
 
-  // If the refresh token has expired, force re-auth so the user doesn't get stuck
-  // with silent 401s from Google APIs.
-  if (session?.error === 'RefreshAccessTokenError') {
-    nextSignIn('google', { callbackUrl: '/sheets' }, { prompt: 'consent' });
-  }
+  const handleSignOut = useCallback(() => {
+    if (signingOut.current) return;
+    signingOut.current = true;
+    nextSignOut({ callbackUrl: '/' });
+  }, []);
+
+  useEffect(() => {
+    if (session?.error === 'RefreshAccessTokenError') {
+      if (signingOut.current) return;
+      signingOut.current = true;
+      nextSignOut({ redirect: false }).then(() => {
+        window.location.href = '/login';
+      });
+    }
+  }, [session]);
 
   function signIn(callbackUrl = '/sheets') {
     nextSignIn('google', { callbackUrl }, { prompt: 'select_account' });
   }
 
-  function signOut() {
-    nextSignOut({ callbackUrl: '/' });
-  }
-
   return (
-    <AuthContext.Provider value={{ user, loading, signIn, signOut }}>
+    <AuthContext.Provider value={{ user, loading, signIn, signOut: handleSignOut }}>
       {children}
     </AuthContext.Provider>
   );

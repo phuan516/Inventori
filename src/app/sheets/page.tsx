@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
+import { useSession } from 'next-auth/react';
 import { useAuth } from '@/context/AuthContext';
 import Logo from '@/components/Logo';
 import T from '@/lib/theme';
@@ -18,6 +19,7 @@ interface Store {
 
 export default function SheetsPage() {
   const { user, loading: authLoading, signOut } = useAuth();
+  const { data: session } = useSession();
   const router = useRouter();
   const [stores, setStores] = useState<Store[]>([]);
   const [loading, setLoading] = useState(true);
@@ -57,6 +59,52 @@ export default function SheetsPage() {
     }
     loadStores();
   }, [user, authLoading, router, loadStores]);
+
+  // Preload gapi so the picker opens instantly
+  useEffect(() => {
+    const s = document.createElement('script');
+    s.src = 'https://apis.google.com/js/api.js';
+    // ponytail: gapi.load fires picker readiness; no external state needed
+    s.onload = () => (window as any).gapi.load('picker', () => {});
+    document.head.appendChild(s);
+    return () => { try { document.head.removeChild(s); } catch {} };
+  }, []);
+
+  async function openPicker() {
+    const token = session?.accessToken;
+    if (!token) return;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const picker = (window as any).google?.picker;
+    if (!picker) return;
+    const { PickerBuilder, DocsView, ViewId, Action, Response } = picker;
+    new PickerBuilder()
+      .setOAuthToken(token)
+      .addView(
+        new DocsView(ViewId.FOLDERS)
+          .setSelectFolderEnabled(true)
+          .setQuery('Inventori')
+      )
+      .setCallback(async (data: any) => {
+        if (data[Response.ACTION] !== Action.PICKED) return;
+        const folderId: string = data[Response.DOCUMENTS][0].id;
+        setSelectedId(folderId);
+        const result = await fetch('/api/sheets').then(r => r.json());
+        const match = (result.stores as Store[])?.find(s => s.id === folderId);
+        if (!match) {
+          setError('Could not find this store. Try refreshing.');
+          setSelectedId(null);
+          return;
+        }
+        localStorage.setItem('inventori_store_id', match.id);
+        localStorage.setItem('inventori_sheet_id', match.sheetId);
+        localStorage.setItem('inventori_sheet_name', match.name ?? '');
+        localStorage.removeItem('inventori_sales_sheet_id');
+        localStorage.removeItem('inventori_hold_sheet_id');
+        router.push('/dashboard');
+      })
+      .build()
+      .setVisible(true);
+  }
 
   async function handleCreate() {
     const fullName = `Inventori - ${createName.trim()}`;
@@ -147,9 +195,23 @@ export default function SheetsPage() {
                 padding: '9px 13px', borderRadius: 8,
                 border: `1px solid ${T.rule}`, background: T.panel,
                 fontSize: 13.5, color: T.ink2, cursor: 'pointer', fontFamily: 'inherit',
+                display: 'flex', alignItems: 'center',
               }}
             >
               {refreshing ? '…' : '↻'}
+            </button>
+            <button
+              onClick={openPicker}
+              title="Pick from Google Drive"
+              style={{
+                padding: '9px 13px', borderRadius: 8,
+                border: `1px solid ${T.rule}`, background: T.panel,
+                fontSize: 13.5, color: T.ink2, cursor: 'pointer', fontFamily: 'inherit',
+                display: 'flex', alignItems: 'center', gap: 5,
+              }}
+            >
+              <DriveIcon />
+              Browse
             </button>
             <button
               onClick={() => { setShowCreate(v => !v); setCreateError(null); }}
@@ -158,6 +220,7 @@ export default function SheetsPage() {
                 border: `1px solid ${T.brand}`,
                 background: T.brand, color: '#fff',
                 fontSize: 13.5, fontWeight: 500, cursor: 'pointer', fontFamily: 'inherit',
+                display: 'flex', alignItems: 'center',
               }}
             >
               + New store
@@ -336,6 +399,19 @@ function EmptyState() {
 }
 
 /* ── Icons ── */
+
+function DriveIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 87.3 78" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M6.6 66.85l3.85 6.65c.8 1.4 1.95 2.5 3.3 3.3l13.75-23.8H0a7.3 7.3 0 0 0 1.05 3.65z" fill="#0066DA"/>
+      <path d="M43.65 25L29.9 1.2C28.55 2 27.4 3.1 26.6 4.5L1.05 48.05A7.34 7.34 0 0 0 0 51.7h27.5z" fill="#00AC47"/>
+      <path d="M73.55 76.8c1.35-.8 2.5-1.9 3.3-3.3l1.6-2.75 7.65-13.25a7.42 7.42 0 0 0 1.05-3.8H59.8L73.55 76.8z" fill="#EA4335"/>
+      <path d="M43.65 25L57.4 1.2A7.53 7.53 0 0 0 53.75 0H33.55c-1.4 0-2.75.4-3.9 1.2z" fill="#00832D"/>
+      <path d="M59.8 51.7H27.5L13.75 75.5c1.35.8 2.9 1.3 4.55 1.3H69c1.65 0 3.2-.45 4.55-1.3z" fill="#2684FC"/>
+      <path d="M73.4 26.35l-12.75-22.1c-.8-1.4-1.95-2.5-3.3-3.3L43.65 25 59.8 51.7h27.45c0-1.35-.35-2.7-1.05-3.8z" fill="#FFBA00"/>
+    </svg>
+  );
+}
 
 function FolderIcon({ size = 32 }: { size?: number }) {
   return (
