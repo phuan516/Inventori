@@ -3,6 +3,7 @@ import { authOptions } from '@/lib/auth';
 import { google } from 'googleapis';
 import { NextRequest, NextResponse } from 'next/server';
 import { DEFAULT_SETTINGS } from '@/lib/settings';
+import { SALES_HEADERS, HOLD_HEADERS } from '@/lib/sheet-schema';
 
 function makeAuth(accessToken: string) {
   const auth = new google.auth.OAuth2();
@@ -114,9 +115,9 @@ export async function POST(req: NextRequest) {
           range: 'Settings!A1:B4',
           values: [
             ['Setting', 'Values'],
-            ['categories',    DEFAULT_SETTINGS.categories.join(',')],
-            ['manufacturers', DEFAULT_SETTINGS.manufacturers.join(',')],
-            ['series',        DEFAULT_SETTINGS.series.join(',')],
+            ['categories',    DEFAULT_SETTINGS.categories.join('|')],
+            ['manufacturers', DEFAULT_SETTINGS.manufacturers.join('|')],
+            ['series',        DEFAULT_SETTINGS.series.join('|')],
           ],
         },
       ],
@@ -173,7 +174,7 @@ export async function POST(req: NextRequest) {
     spreadsheetId: salesSheetId,
     range: `'${monthTabName}'!A1`,
     valueInputOption: 'RAW',
-    requestBody: { values: [['ID', 'Date', 'Time', 'Customer', 'SKU', 'Name', 'Qty', 'Unit Price', 'Discount', 'Effective Price', 'Line Total', 'Sale Discount', 'Total']] },
+    requestBody: { values: [SALES_HEADERS] },
   });
   await drive.files.update({
     fileId: salesSheetId,
@@ -200,7 +201,7 @@ export async function POST(req: NextRequest) {
     spreadsheetId: holdSheetId,
     range: 'Hold!A1',
     valueInputOption: 'RAW',
-    requestBody: { values: [['ID', 'Date', 'Time', 'Customer', 'SKU', 'Name', 'Qty', 'Unit Price', 'Discount JSON', 'Effective Price', 'Line Total', 'Sale Discount JSON', 'Total']] },
+    requestBody: { values: [HOLD_HEADERS] },
   });
   await drive.files.update({
     fileId: holdSheetId,

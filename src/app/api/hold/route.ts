@@ -3,20 +3,13 @@ import { authOptions } from '@/lib/auth';
 import { google } from 'googleapis';
 import { unstable_cache, revalidateTag } from 'next/cache';
 import { NextRequest, NextResponse } from 'next/server';
+import { HOLD_HEADERS } from '@/lib/sheet-schema';
 
 function makeAuth(accessToken: string) {
   const auth = new google.auth.OAuth2();
   auth.setCredentials({ access_token: accessToken });
   return auth;
 }
-
-// 13-column schema — A:M
-// A=ID  B=Date  C=Time  D=Customer  E=SKU  F=Name  G=Qty  H=Unit Price
-// I=Discount JSON  J=Effective Price  K=Line Total  L=Sale Discount JSON  M=Total
-const HOLD_HEADERS = [
-  'ID', 'Date', 'Time', 'Customer', 'SKU', 'Name', 'Qty', 'Unit Price',
-  'Discount JSON', 'Effective Price', 'Line Total', 'Sale Discount JSON', 'Total',
-];
 
 interface DiscountObj { type: 'pct' | 'amt' | 'set'; value: number; applyToAll: boolean; partialQty: number; reason: string }
 interface SaleDiscObj  { type: 'pct' | 'amt'; value: number; reason: string }

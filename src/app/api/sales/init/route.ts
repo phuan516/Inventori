@@ -2,15 +2,13 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { google } from 'googleapis';
 import { NextRequest, NextResponse } from 'next/server';
+import { SALES_HEADERS, HOLD_HEADERS } from '@/lib/sheet-schema';
 
 function makeAuth(accessToken: string) {
   const auth = new google.auth.OAuth2();
   auth.setCredentials({ access_token: accessToken });
   return auth;
 }
-
-const SALES_HEADERS = ['ID', 'Date', 'Time', 'Customer', 'SKU', 'Name', 'Qty', 'Unit Price', 'Discount',      'Effective Price', 'Line Total', 'Sale Discount',      'Total'];
-const HOLD_HEADERS  = ['ID', 'Date', 'Time', 'Customer', 'SKU', 'Name', 'Qty', 'Unit Price', 'Discount JSON', 'Effective Price', 'Line Total', 'Sale Discount JSON', 'Total'];
 
 // POST /api/sales/init — idempotent: finds or creates Sales folder, Sales sheet, Hold sheet
 export async function POST(req: NextRequest) {

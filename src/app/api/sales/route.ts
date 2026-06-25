@@ -3,14 +3,13 @@ import { authOptions } from '@/lib/auth';
 import { google } from 'googleapis';
 import { unstable_cache, revalidateTag } from 'next/cache';
 import { NextRequest, NextResponse } from 'next/server';
+import { SALES_HEADERS } from '@/lib/sheet-schema';
 
 function makeAuth(accessToken: string) {
   const auth = new google.auth.OAuth2();
   auth.setCredentials({ access_token: accessToken });
   return auth;
 }
-
-const HEADERS = ['ID', 'Date', 'Time', 'Customer', 'SKU', 'Name', 'Qty', 'Unit Price', 'Discount', 'Effective Price', 'Line Total', 'Sale Discount', 'Total'];
 
 function salesCacheTag(salesSheetId: string) { return `sales:${salesSheetId}`; }
 
@@ -50,7 +49,7 @@ async function fetchSalesFromSheet(salesSheetId: string, accessToken: string, fr
     try {
       resp = await sheetsApi.spreadsheets.values.get({
         spreadsheetId: salesSheetId,
-        range: `'${tab}'!A:M`,
+        range: `'${tab}'!A:N`,
       });
     } catch {
       continue;
@@ -61,10 +60,10 @@ async function fetchSalesFromSheet(salesSheetId: string, accessToken: string, fr
       if (!row?.[0]) continue;
       const id = String(row[0]);
 
-      if (id.startsWith('UNDO-')) {
-        undoneIds.add(id.slice(5));
-        continue;
-      }
+      // New format: Status col N = 'UNDO'
+      if (String(row[13] ?? '') === 'UNDO') { undoneIds.add(id); continue; }
+      // Legacy format: UNDO- prefix
+      if (id.startsWith('UNDO-')) { undoneIds.add(id.slice(5)); continue; }
 
       const dateStr = String(row[1] ?? '');
       if (filterByDate) {
@@ -183,7 +182,7 @@ export async function POST(req: NextRequest) {
       spreadsheetId: salesSheetId,
       range: `'${tabName}'!A1`,
       valueInputOption: 'RAW',
-      requestBody: { values: [HEADERS] },
+      requestBody: { values: [SALES_HEADERS] },
     });
   }
 

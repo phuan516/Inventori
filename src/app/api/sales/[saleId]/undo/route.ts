@@ -3,14 +3,13 @@ import { authOptions } from '@/lib/auth';
 import { google } from 'googleapis';
 import { revalidateTag } from 'next/cache';
 import { NextRequest, NextResponse } from 'next/server';
+import { SALES_HEADERS } from '@/lib/sheet-schema';
 
 function makeAuth(accessToken: string) {
   const auth = new google.auth.OAuth2();
   auth.setCredentials({ access_token: accessToken });
   return auth;
 }
-
-const HEADERS = ['ID', 'Date', 'Time', 'Customer', 'SKU', 'Name', 'Qty', 'Unit Price', 'Discount', 'Effective Price', 'Line Total', 'Sale Discount', 'Total'];
 
 type Ctx = { params: Promise<{ saleId: string }> };
 
@@ -40,7 +39,7 @@ export async function POST(req: NextRequest, ctx: Ctx) {
       spreadsheetId: salesSheetId,
       range: `'${tabName}'!A1`,
       valueInputOption: 'RAW',
-      requestBody: { values: [HEADERS] },
+      requestBody: { values: [SALES_HEADERS] },
     });
   }
 
@@ -49,10 +48,10 @@ export async function POST(req: NextRequest, ctx: Ctx) {
 
   await sheetsApi.spreadsheets.values.append({
     spreadsheetId: salesSheetId,
-    range: `'${tabName}'!A:M`,
+    range: `'${tabName}'!A:N`,
     valueInputOption: 'RAW',
     requestBody: {
-      values: [[`UNDO-${saleId}`, undoDate, undoTime, '', '', 'UNDO MARKER', '', '', '', '', '', '', '']],
+      values: [[saleId, undoDate, undoTime, '', '', 'UNDO MARKER', '', '', '', '', '', '', '', 'UNDO']],
     },
   });
 

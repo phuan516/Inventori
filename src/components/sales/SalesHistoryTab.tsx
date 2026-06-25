@@ -47,6 +47,17 @@ function formatDateCell(dateStr: string, time: string): string {
 
 function money(n: number) { return '$' + n.toFixed(2); }
 
+function parseSaleDiscLabel(raw: string): string {
+  if (!raw) return '';
+  try {
+    const d = JSON.parse(raw) as { type: 'pct' | 'amt'; value: number; reason?: string };
+    const base = d.type === 'pct' ? `Sale discount · ${d.value}%` : `Sale discount · −$${d.value.toFixed(2)}`;
+    return d.reason ? `${base} · ${d.reason}` : base;
+  } catch {
+    return raw; // backward compat for old plain-string format
+  }
+}
+
 function skuHue(sku: string): number {
   let h = 0;
   for (let i = 0; i < sku.length; i++) h = (h * 31 + sku.charCodeAt(i)) % 360;
@@ -479,7 +490,7 @@ function DetailPanel({ sale, onClose, onUndoRequest, onExport }: DetailPanelProp
 
         <div style={{ padding: '12px 18px', display: 'flex', flexDirection: 'column', gap: 7 }}>
           <TotalLine label="Subtotal" value={money(subtotal)} />
-          {saleDiscAmt > 0 && <TotalLine label={sale.saleDiscount || 'Sale discount'} value={'−' + money(saleDiscAmt)} muted />}
+          {saleDiscAmt > 0 && <TotalLine label={parseSaleDiscLabel(sale.saleDiscount) || 'Sale discount'} value={'−' + money(saleDiscAmt)} muted />}
           <div style={{ height: 1, background: T.rule2, margin: '2px 0' }} />
           <TotalLine label="Sale total" value={money(sale.total)} big />
         </div>

@@ -26,10 +26,12 @@ function parseSettings(rows: string[][]): AppSettings {
   for (const [key, val] of rows.slice(1)) {
     if (key) map[key] = val ?? '';
   }
+  // ponytail: pipe-first split for migration — old data used commas, new writes use | to allow commas in names
+  const splitVal = (v: string) => (v.includes('|') ? v.split('|') : v.split(',')).filter(Boolean);
   return {
-    categories:    map.categories    ? map.categories.split(',').filter(Boolean)    : DEFAULT_SETTINGS.categories,
-    manufacturers: map.manufacturers ? map.manufacturers.split(',').filter(Boolean) : DEFAULT_SETTINGS.manufacturers,
-    series:        map.series        ? map.series.split(',').filter(Boolean)        : DEFAULT_SETTINGS.series,
+    categories:    map.categories    ? splitVal(map.categories)    : DEFAULT_SETTINGS.categories,
+    manufacturers: map.manufacturers ? splitVal(map.manufacturers) : DEFAULT_SETTINGS.manufacturers,
+    series:        map.series        ? splitVal(map.series)        : DEFAULT_SETTINGS.series,
   };
 }
 
@@ -60,9 +62,9 @@ export async function PUT(req: NextRequest, ctx: Ctx) {
 
   const putValues = [
     ['Setting', 'Values'],
-    ['categories',    body.categories.join(',')],
-    ['manufacturers', body.manufacturers.join(',')],
-    ['series',        body.series.join(',')],
+    ['categories',    body.categories.join('|')],
+    ['manufacturers', body.manufacturers.join('|')],
+    ['series',        body.series.join('|')],
   ];
   await sheets.spreadsheets.values.update({
     spreadsheetId: id,

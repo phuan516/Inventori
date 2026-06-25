@@ -306,11 +306,11 @@ export default function SalesTab({ products, sheetName, salesSheetId: salesSheet
           name: l.name,
           qty: l.qty,
           unitPrice: l.price,
-          discount: discounts[l.sku] ? formatDiscLabel(discounts[l.sku]) : '',
+          discount: discounts[l.sku] ? JSON.stringify(discounts[l.sku]) : '',
           effectivePrice: effectiveUnitPrice(l),
           lineTotal: effectiveLineTotal(l),
         })),
-        saleDiscount: saleDiscount ? formatSaleDiscLabel(saleDiscount) : '',
+        saleDiscount: saleDiscount ? JSON.stringify(saleDiscount) : '',
         saleTotal,
       }),
     }).catch(() => {});
