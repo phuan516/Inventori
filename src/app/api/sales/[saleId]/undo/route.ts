@@ -1,6 +1,7 @@
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { google } from 'googleapis';
+import { revalidateTag } from 'next/cache';
 import { NextRequest, NextResponse } from 'next/server';
 
 function makeAuth(accessToken: string) {
@@ -55,5 +56,6 @@ export async function POST(req: NextRequest, ctx: Ctx) {
     },
   });
 
+  revalidateTag(`sales:${salesSheetId}`);
   return NextResponse.json({ ok: true });
 }

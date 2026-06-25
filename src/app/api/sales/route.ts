@@ -1,6 +1,7 @@
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { google } from 'googleapis';
+import { unstable_cache, revalidateTag } from 'next/cache';
 import { NextRequest, NextResponse } from 'next/server';
 
 function makeAuth(accessToken: string) {
@@ -11,24 +12,16 @@ function makeAuth(accessToken: string) {
 
 const HEADERS = ['ID', 'Date', 'Time', 'Customer', 'SKU', 'Name', 'Qty', 'Unit Price', 'Discount', 'Effective Price', 'Line Total', 'Sale Discount', 'Total'];
 
-export async function GET(req: NextRequest) {
-  const session = await getServerSession(authOptions);
-  if (!session?.accessToken) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+function salesCacheTag(salesSheetId: string) { return `sales:${salesSheetId}`; }
 
-  const { searchParams } = new URL(req.url);
-  const salesSheetId = searchParams.get('salesSheetId');
-  if (!salesSheetId) return NextResponse.json({ error: 'Missing salesSheetId' }, { status: 400 });
+const toYMD = (d: Date) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 
-  const fromStr = searchParams.get('from');
-  const toStr = searchParams.get('to');
-  const toYMD = (d: Date) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+async function fetchSalesFromSheet(salesSheetId: string, accessToken: string, fromStr: string, toStr: string) {
   const filterByDate = !!(fromStr || toStr);
-  const fromYMD = fromStr ?? '';
-  const toYMD_ = toStr ?? '';
-  const fromDate = filterByDate ? new Date(fromYMD) : null;
-  const toDate = filterByDate ? (() => { const d = new Date(toYMD_); d.setUTCHours(23, 59, 59, 999); return d; })() : null;
+  const fromDate = filterByDate ? new Date(fromStr) : null;
+  const toDate = filterByDate ? (() => { const d = new Date(toStr); d.setUTCHours(23, 59, 59, 999); return d; })() : null;
 
-  const auth = makeAuth(session.accessToken);
+  const auth = makeAuth(accessToken);
   const sheetsApi = google.sheets({ version: 'v4', auth });
 
   const ss = await sheetsApi.spreadsheets.get({ spreadsheetId: salesSheetId, fields: 'sheets/properties' });
@@ -78,7 +71,7 @@ export async function GET(req: NextRequest) {
         const parsedDate = new Date(dateStr);
         if (isNaN(parsedDate.getTime())) continue;
         const rowYMD = toYMD(parsedDate);
-        if (rowYMD < fromYMD || rowYMD > toYMD_) continue;
+        if (rowYMD < fromStr || rowYMD > toStr) continue;
       }
 
       const line = {
@@ -115,7 +108,28 @@ export async function GET(req: NextRequest) {
       return db - da;
     });
 
-  return NextResponse.json({ sales });
+  return { sales };
+}
+
+export async function GET(req: NextRequest) {
+  const session = await getServerSession(authOptions);
+  if (!session?.accessToken) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+  const { searchParams } = new URL(req.url);
+  const salesSheetId = searchParams.get('salesSheetId');
+  if (!salesSheetId) return NextResponse.json({ error: 'Missing salesSheetId' }, { status: 400 });
+
+  const fromStr = searchParams.get('from') ?? '';
+  const toStr = searchParams.get('to') ?? '';
+  const token = session.accessToken;
+
+  const data = await unstable_cache(
+    () => fetchSalesFromSheet(salesSheetId, token, fromStr, toStr),
+    [salesSheetId, fromStr, toStr],
+    { revalidate: 60, tags: [salesCacheTag(salesSheetId)] },
+  )();
+
+  return NextResponse.json(data);
 }
 
 export async function POST(req: NextRequest) {
@@ -166,5 +180,6 @@ export async function POST(req: NextRequest) {
     requestBody: { values: rows },
   });
 
+  revalidateTag(salesCacheTag(salesSheetId));
   return NextResponse.json({ ok: true });
 }

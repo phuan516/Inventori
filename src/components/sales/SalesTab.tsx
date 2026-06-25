@@ -11,6 +11,9 @@ import SalesHistoryTab from './SalesHistoryTab';
 
 const money = (n: number) => '$' + n.toFixed(2);
 
+const holdCache = new Map<string, { tickets: HeldTicket[]; ts: number }>();
+const HOLD_CACHE_TTL = 5 * 60 * 1000;
+
 function skuHue(sku: string): number {
   let h = 0;
   for (let i = 0; i < sku.length; i++) h = (h * 31 + sku.charCodeAt(i)) % 360;
@@ -121,9 +124,19 @@ export default function SalesTab({ products, sheetName, salesSheetId: salesSheet
   // Load persisted held tickets from the Hold sheet on mount
   useEffect(() => {
     if (!holdSheetId) return;
+    const cached = holdCache.get(holdSheetId);
+    if (cached && Date.now() - cached.ts < HOLD_CACHE_TTL) {
+      setHeldTickets(cached.tickets);
+      return;
+    }
     fetch(`/api/hold?holdSheetId=${holdSheetId}`)
       .then(r => r.json())
-      .then(data => { if (Array.isArray(data.tickets)) setHeldTickets(data.tickets); })
+      .then(data => {
+        if (Array.isArray(data.tickets)) {
+          holdCache.set(holdSheetId, { tickets: data.tickets, ts: Date.now() });
+          setHeldTickets(data.tickets);
+        }
+      })
       .catch(() => {});
   }, [holdSheetId]);
 
@@ -218,6 +231,7 @@ export default function SalesTab({ products, sheetName, salesSheetId: salesSheet
     const held: HeldTicket = { id: ticketId, customer, lines: ticket, discounts, saleDiscount };
     const sheets = await ensureSheets();
     if (sheets) {
+      if (sheets.holdSheetId) holdCache.delete(sheets.holdSheetId);
       fetch('/api/hold', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -238,6 +252,7 @@ export default function SalesTab({ products, sheetName, salesSheetId: salesSheet
     const held = heldTickets[idx];
     // Remove resumed ticket from the sheet
     if (holdSheetId) {
+      holdCache.delete(holdSheetId);
       fetch(`/api/hold/${held.id}?holdSheetId=${holdSheetId}`, { method: 'DELETE' }).catch(() => {});
     }
     if (ticket.length > 0) {

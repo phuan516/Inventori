@@ -123,15 +123,23 @@ export async function POST(req: NextRequest) {
     },
   });
 
-  // 4. Create Intake Records subfolder
-  await drive.files.create({
-    requestBody: {
-      name: 'Intake Records',
-      mimeType: 'application/vnd.google-apps.folder',
-      parents: [folderId],
-    },
-    fields: 'id',
+  // 4. Create Intake spreadsheet with Sessions tab
+  const intakeSsRes = await sheetsApi.spreadsheets.create({
+    requestBody: { properties: { title: 'Intake' } },
+    fields: 'spreadsheetId,sheets/properties/sheetId',
   });
+  const intakeSheetId = intakeSsRes.data.spreadsheetId!;
+  const intakeDefaultSheetId = intakeSsRes.data.sheets?.[0]?.properties?.sheetId ?? 0;
+
+  await sheetsApi.spreadsheets.batchUpdate({
+    spreadsheetId: intakeSheetId,
+    requestBody: { requests: [{ updateSheetProperties: { properties: { sheetId: intakeDefaultSheetId, title: 'Sessions' }, fields: 'title' } }] },
+  });
+  await sheetsApi.spreadsheets.values.update({
+    spreadsheetId: intakeSheetId, range: 'Sessions!A1:C1', valueInputOption: 'RAW',
+    requestBody: { values: [['TabName', 'Status', 'Date']] },
+  });
+  await drive.files.update({ fileId: intakeSheetId, addParents: folderId, removeParents: 'root', fields: 'id' });
 
   // 5. Create Sales subfolder
   const salesFolderRes = await drive.files.create({
@@ -206,6 +214,7 @@ export async function POST(req: NextRequest) {
     sheetId: spreadsheetId,
     salesSheetId,
     holdSheetId,
+    intakeSheetId,
     name: folderRes.data.name,
     modifiedTime: folderRes.data.modifiedTime,
   }, { status: 201 });

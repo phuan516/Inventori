@@ -86,6 +86,7 @@ function LedgerSkeleton() {
 export default function IntakeTab({ onInventoryChanged }: { onInventoryChanged?: () => void }) {
   const storeId = useRef<string | null>(null);
   const [intakes, setIntakes] = useState<IntakeSession[]>([]);
+  const [intakeSheetId, setIntakeSheetId] = useState<string | null>(null);
   const [selectedIntake, setSelectedIntake] = useState<IntakeSession | null>(null);
   const [intakeLines, setIntakeLines] = useState<IntakeLine[]>([]);
   const [catalog, setCatalog] = useState<Product[]>([]);
@@ -110,6 +111,7 @@ export default function IntakeTab({ onInventoryChanged }: { onInventoryChanged?:
     try {
       const data = await fetch(`/api/intake?storeId=${storeId.current}`).then(r => r.json());
       setIntakes(data.intakes ?? []);
+      setIntakeSheetId(data.intakeSheetId ?? null);
     } finally {
       setLoadingIntakes(false);
     }
@@ -119,7 +121,7 @@ export default function IntakeTab({ onInventoryChanged }: { onInventoryChanged?:
     setSelectedIntake(intake);
     setLoadingLines(true);
     try {
-      const data = await fetch(`/api/intake/${intake.id}`).then(r => r.json());
+      const data = await fetch(`/api/intake/${intake.id}?intakeSheetId=${intake.intakeSheetId}`).then(r => r.json());
       setIntakeLines(data.lines ?? []);
     } finally {
       setLoadingLines(false);
@@ -133,11 +135,12 @@ export default function IntakeTab({ onInventoryChanged }: { onInventoryChanged?:
       const res = await fetch('/api/intake', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ storeId: storeId.current }),
+        body: JSON.stringify({ storeId: storeId.current, intakeSheetId }),
       });
       const data = await res.json();
       if (!res.ok) return;
       const newIntake: IntakeSession = data.intake;
+      setIntakeSheetId(newIntake.intakeSheetId);
       setIntakes(prev => [newIntake, ...prev]);
       setIntakeLines([]);
       setSelectedIntake(newIntake);

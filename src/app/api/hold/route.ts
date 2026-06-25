@@ -1,6 +1,7 @@
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { google } from 'googleapis';
+import { unstable_cache, revalidateTag } from 'next/cache';
 import { NextRequest, NextResponse } from 'next/server';
 
 function makeAuth(accessToken: string) {
@@ -35,15 +36,10 @@ function effectiveLineTotal(price: number, qty: number, d: DiscountObj | undefin
   return effPrice * partial + price * (qty - partial);
 }
 
-// GET /api/hold?holdSheetId=xxx — load all held tickets
-export async function GET(req: NextRequest) {
-  const session = await getServerSession(authOptions);
-  if (!session?.accessToken) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+function holdCacheTag(holdSheetId: string) { return `hold:${holdSheetId}`; }
 
-  const holdSheetId = req.nextUrl.searchParams.get('holdSheetId');
-  if (!holdSheetId) return NextResponse.json({ error: 'holdSheetId required' }, { status: 400 });
-
-  const auth = makeAuth(session.accessToken);
+async function fetchHoldFromSheet(holdSheetId: string, accessToken: string) {
+  const auth = makeAuth(accessToken);
   const sheetsApi = google.sheets({ version: 'v4', auth });
 
   const res = await sheetsApi.spreadsheets.values.get({
@@ -52,7 +48,7 @@ export async function GET(req: NextRequest) {
   });
 
   const rows = res.data.values ?? [];
-  if (rows.length <= 1) return NextResponse.json({ tickets: [] });
+  if (rows.length <= 1) return { tickets: [] };
 
   const ticketMap = new Map<string, { id: string; customer: string; lines: { sku: string; name: string; qty: number; price: number }[]; discounts: Record<string, unknown>; saleDiscount: unknown }>();
   for (const row of rows.slice(1)) {
@@ -72,7 +68,25 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  return NextResponse.json({ tickets: Array.from(ticketMap.values()) });
+  return { tickets: Array.from(ticketMap.values()) };
+}
+
+// GET /api/hold?holdSheetId=xxx — load all held tickets
+export async function GET(req: NextRequest) {
+  const session = await getServerSession(authOptions);
+  if (!session?.accessToken) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+  const holdSheetId = req.nextUrl.searchParams.get('holdSheetId');
+  if (!holdSheetId) return NextResponse.json({ error: 'holdSheetId required' }, { status: 400 });
+
+  const token = session.accessToken;
+  const data = await unstable_cache(
+    () => fetchHoldFromSheet(holdSheetId, token),
+    [holdSheetId],
+    { revalidate: 60, tags: [holdCacheTag(holdSheetId)] },
+  )();
+
+  return NextResponse.json(data);
 }
 
 // POST /api/hold — save a held ticket
@@ -129,5 +143,6 @@ export async function POST(req: NextRequest) {
     requestBody: { values: rows },
   });
 
+  revalidateTag(holdCacheTag(holdSheetId));
   return NextResponse.json({ ok: true });
 }

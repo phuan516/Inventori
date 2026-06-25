@@ -95,7 +95,7 @@ export async function POST(req: NextRequest, ctx: Ctx) {
   return NextResponse.json({ product }, { status: 201 });
 }
 
-// PUT — update an existing product (finds row by id, updates it)
+// PUT — update an existing product (finds row by SKU)
 export async function PUT(req: NextRequest, ctx: Ctx) {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -105,12 +105,12 @@ export async function PUT(req: NextRequest, ctx: Ctx) {
 
   const sheets = google.sheets({ version: 'v4', auth: makeAuth(session.accessToken!) });
 
-  const colC = await sheets.spreadsheets.values.get({
+  const colA = await sheets.spreadsheets.values.get({
     spreadsheetId: id,
-    range: `${SHEET}!C:C`,
+    range: `${SHEET}!A:A`,
   });
-  const names = ((colC.data.values ?? []) as string[][]).map(r => r[0] ?? '');
-  const rowIndex = names.findIndex((n, i) => i > 0 && n === product.name);
+  const skus = ((colA.data.values ?? []) as string[][]).map(r => r[0] ?? '');
+  const rowIndex = skus.findIndex((s, i) => i > 0 && s === product.sku);
   if (rowIndex < 1) return NextResponse.json({ error: 'Not found' }, { status: 404 });
 
   const rowNum = rowIndex + 1;
@@ -125,22 +125,22 @@ export async function PUT(req: NextRequest, ctx: Ctx) {
   return NextResponse.json({ ok: true });
 }
 
-// DELETE — delete a product row by productId
+// DELETE — delete a product row by SKU
 export async function DELETE(req: NextRequest, ctx: Ctx) {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const { id } = await ctx.params;
-  const { name } = (await req.json()) as { name: string };
+  const { sku } = (await req.json()) as { sku: string };
 
   const sheets = google.sheets({ version: 'v4', auth: makeAuth(session.accessToken!) });
 
-  const colC = await sheets.spreadsheets.values.get({
+  const colA = await sheets.spreadsheets.values.get({
     spreadsheetId: id,
-    range: `${SHEET}!C:C`,
+    range: `${SHEET}!A:A`,
   });
-  const names = ((colC.data.values ?? []) as string[][]).map(r => r[0] ?? '');
-  const rowIndex = names.findIndex((n, i) => i > 0 && n === name);
+  const skus = ((colA.data.values ?? []) as string[][]).map(r => r[0] ?? '');
+  const rowIndex = skus.findIndex((s, i) => i > 0 && s === sku);
   if (rowIndex < 1) return NextResponse.json({ error: 'Not found' }, { status: 404 });
 
   const spreadsheet = await sheets.spreadsheets.get({

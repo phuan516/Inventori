@@ -52,7 +52,7 @@ export default function LedgerWorkspace({ intake, initialLines, catalog, onCommi
   async function saveDraft() {
     setSaving(true);
     try {
-      await fetch(`/api/intake/${intake.id}`, {
+      await fetch(`/api/intake/${intake.id}?intakeSheetId=${intake.intakeSheetId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ lines: ik.lines, status: 'draft' }),
@@ -66,7 +66,7 @@ export default function LedgerWorkspace({ intake, initialLines, catalog, onCommi
     if (!confirm('Delete this intake? This cannot be undone.')) return;
     setSaving(true);
     try {
-      await fetch(`/api/intake/${intake.id}`, { method: 'DELETE' });
+      await fetch(`/api/intake/${intake.id}?intakeSheetId=${intake.intakeSheetId}`, { method: 'DELETE' });
       onDiscard();
     } finally {
       setSaving(false);
@@ -77,7 +77,7 @@ export default function LedgerWorkspace({ intake, initialLines, catalog, onCommi
     setSaving(true);
     try {
       const sheetId = localStorage.getItem('inventori_sheet_id');
-      await fetch(`/api/intake/${intake.id}`, {
+      await fetch(`/api/intake/${intake.id}?intakeSheetId=${intake.intakeSheetId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ lines: ik.lines, status: 'committed', sheetId }),

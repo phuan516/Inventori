@@ -2,6 +2,7 @@ import type { Product } from './types';
 
 export interface IntakeSession {
   id: string;
+  intakeSheetId: string;
   title: string;
   supplier: string;
   date: string;

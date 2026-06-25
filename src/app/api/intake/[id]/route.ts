@@ -40,31 +40,21 @@ function lineToRow(l: IntakeLine): (string | number)[] {
 
 type Ctx = { params: Promise<{ id: string }> };
 
-// DELETE /api/intake/[id] — permanently delete this intake
-export async function DELETE(_req: NextRequest, ctx: Ctx) {
+// GET /api/intake/[tabName]?intakeSheetId=xxx — read intake lines
+export async function GET(req: NextRequest, ctx: Ctx) {
   const session = await getServerSession(authOptions);
   if (!session?.accessToken) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const { id } = await ctx.params;
-  const auth = makeAuth(session.accessToken);
-  const drive = google.drive({ version: 'v3', auth });
+  const intakeSheetId = req.nextUrl.searchParams.get('intakeSheetId');
+  if (!intakeSheetId) return NextResponse.json({ error: 'intakeSheetId required' }, { status: 400 });
 
-  await drive.files.delete({ fileId: id });
-  return NextResponse.json({ ok: true });
-}
-
-// GET /api/intake/[id] — read intake lines
-export async function GET(_req: NextRequest, ctx: Ctx) {
-  const session = await getServerSession(authOptions);
-  if (!session?.accessToken) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-
-  const { id } = await ctx.params;
   const auth = makeAuth(session.accessToken);
   const sheetsApi = google.sheets({ version: 'v4', auth });
 
   const res = await sheetsApi.spreadsheets.values.get({
-    spreadsheetId: id,
-    range: 'Lines!A2:K',
+    spreadsheetId: intakeSheetId,
+    range: `'${id}'!A2:M`,
   });
 
   const rows = (res.data.values ?? []) as string[][];
@@ -73,12 +63,15 @@ export async function GET(_req: NextRequest, ctx: Ctx) {
   return NextResponse.json({ lines });
 }
 
-// PUT /api/intake/[id] — save lines, update status, and on commit update inventory
+// PUT /api/intake/[tabName]?intakeSheetId=xxx — save lines and update status
 export async function PUT(req: NextRequest, ctx: Ctx) {
   const session = await getServerSession(authOptions);
   if (!session?.accessToken) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const { id } = await ctx.params;
+  const intakeSheetId = req.nextUrl.searchParams.get('intakeSheetId');
+  if (!intakeSheetId) return NextResponse.json({ error: 'intakeSheetId required' }, { status: 400 });
+
   const { lines, status, sheetId } = (await req.json()) as {
     lines: IntakeLine[];
     status: 'draft' | 'committed';
@@ -87,30 +80,70 @@ export async function PUT(req: NextRequest, ctx: Ctx) {
 
   const auth = makeAuth(session.accessToken);
   const sheetsApi = google.sheets({ version: 'v4', auth });
-  const drive = google.drive({ version: 'v3', auth });
 
-  // Save intake lines
-  await sheetsApi.spreadsheets.values.clear({ spreadsheetId: id, range: 'Lines!A2:K' });
+  await sheetsApi.spreadsheets.values.clear({ spreadsheetId: intakeSheetId, range: `'${id}'!A2:M` });
   if (lines.length > 0) {
     await sheetsApi.spreadsheets.values.update({
-      spreadsheetId: id,
-      range: 'Lines!A2',
+      spreadsheetId: intakeSheetId,
+      range: `'${id}'!A2`,
       valueInputOption: 'RAW',
       requestBody: { values: lines.map(lineToRow) },
     });
   }
 
-  // Update status in Drive appProperties
-  await drive.files.update({
-    fileId: id,
-    requestBody: { appProperties: { status } },
-    fields: 'id',
-  });
+  // Update status in Sessions tab
+  const sessRes = await sheetsApi.spreadsheets.values.get({ spreadsheetId: intakeSheetId, range: 'Sessions!A:A' });
+  const tabNames = (sessRes.data.values ?? []) as string[][];
+  const rowIdx = tabNames.findIndex((r, i) => i > 0 && r[0] === id);
+  if (rowIdx > 0) {
+    await sheetsApi.spreadsheets.values.update({
+      spreadsheetId: intakeSheetId,
+      range: `Sessions!B${rowIdx + 1}`,
+      valueInputOption: 'RAW',
+      requestBody: { values: [[status]] },
+    });
+  }
 
-  // On commit: update inventory stock
   if (status === 'committed' && sheetId && lines.length > 0) {
     await applyToInventory(sheetsApi, sheetId, lines);
     revalidateTag(`products:${sheetId}`);
+  }
+
+  return NextResponse.json({ ok: true });
+}
+
+// DELETE /api/intake/[tabName]?intakeSheetId=xxx — delete this intake tab
+export async function DELETE(req: NextRequest, ctx: Ctx) {
+  const session = await getServerSession(authOptions);
+  if (!session?.accessToken) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+  const { id } = await ctx.params;
+  const intakeSheetId = req.nextUrl.searchParams.get('intakeSheetId');
+  if (!intakeSheetId) return NextResponse.json({ error: 'intakeSheetId required' }, { status: 400 });
+
+  const auth = makeAuth(session.accessToken);
+  const sheetsApi = google.sheets({ version: 'v4', auth });
+
+  const ss = await sheetsApi.spreadsheets.get({ spreadsheetId: intakeSheetId, fields: 'sheets/properties' });
+  const sheetTab = ss.data.sheets?.find(s => s.properties?.title === id);
+  if (!sheetTab?.properties?.sheetId) return NextResponse.json({ error: 'Tab not found' }, { status: 404 });
+
+  await sheetsApi.spreadsheets.batchUpdate({
+    spreadsheetId: intakeSheetId,
+    requestBody: { requests: [{ deleteSheet: { sheetId: sheetTab.properties.sheetId } }] },
+  });
+
+  // Remove from Sessions tab
+  const sessRes = await sheetsApi.spreadsheets.values.get({ spreadsheetId: intakeSheetId, range: 'Sessions!A:C' });
+  const rows = (sessRes.data.values ?? []) as string[][];
+  const remaining = rows.filter((r, i) => i === 0 || r[0] !== id);
+
+  await sheetsApi.spreadsheets.values.clear({ spreadsheetId: intakeSheetId, range: 'Sessions!A:C' });
+  if (remaining.length > 0) {
+    await sheetsApi.spreadsheets.values.update({
+      spreadsheetId: intakeSheetId, range: 'Sessions!A1', valueInputOption: 'RAW',
+      requestBody: { values: remaining },
+    });
   }
 
   return NextResponse.json({ ok: true });
@@ -121,14 +154,9 @@ async function applyToInventory(
   sheetId: string,
   lines: IntakeLine[],
 ) {
-  // Read current inventory (11-col layout: A=SKU B=UPC C=Name D=Cat E=Mfr F=Series G=Stock …)
-  const invRes = await sheetsApi.spreadsheets.values.get({
-    spreadsheetId: sheetId,
-    range: 'Products!A:K',
-  });
+  const invRes = await sheetsApi.spreadsheets.values.get({ spreadsheetId: sheetId, range: 'Products!A:K' });
   const invRows = (invRes.data.values ?? []) as string[][];
 
-  // Map SKU and UPC → { rowNum (1-based), currentStock }
   const skuMap = new Map<string, { rowNum: number; stock: number }>();
   invRows.forEach((row, i) => {
     if (i === 0) return;
@@ -142,24 +170,9 @@ async function applyToInventory(
   for (const line of lines) {
     const existing = skuMap.get(line.sku) ?? skuMap.get(line.sku.toUpperCase());
     if (existing) {
-      stockUpdates.push({
-        range: `Products!G${existing.rowNum}`,
-        values: [[existing.stock + line.qty]],
-      });
+      stockUpdates.push({ range: `Products!G${existing.rowNum}`, values: [[existing.stock + line.qty]] });
     } else {
-      newRows.push([
-        line.sku,
-        '',
-        line.name,
-        line.cat || '',
-        line.mfr || '',
-        line.series || '',
-        line.qty,
-        0,
-        line.price || 0,
-        line.cost || 0,
-        line.hue || 0,
-      ]);
+      newRows.push([line.sku, '', line.name, line.cat || '', line.mfr || '', line.series || '', line.qty, 0, line.price || 0, line.cost || 0, line.hue || 0]);
     }
   }
 
@@ -169,12 +182,9 @@ async function applyToInventory(
       requestBody: { valueInputOption: 'RAW', data: stockUpdates },
     });
   }
-
   if (newRows.length > 0) {
     await sheetsApi.spreadsheets.values.append({
-      spreadsheetId: sheetId,
-      range: 'Products!A:K',
-      valueInputOption: 'USER_ENTERED',
+      spreadsheetId: sheetId, range: 'Products!A:K', valueInputOption: 'USER_ENTERED',
       requestBody: { values: newRows },
     });
   }

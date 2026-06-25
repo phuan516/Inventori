@@ -155,7 +155,7 @@ export default function AppPage() {
   }
 
   function saveItem(updated: Product) {
-    setItems(prev => prev.map(p => p.name === updated.name ? updated : p));
+    setItems(prev => prev.map(p => p.sku === updated.sku ? updated : p));
     setSelected(null);
     if (!sheetId) return;
     fetch(`/api/sheets/${sheetId}`, {
@@ -190,7 +190,7 @@ export default function AppPage() {
     fetch(`/api/sheets/${sheetId}`, {
       method: 'DELETE',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name: item?.name ?? '' }),
+      body: JSON.stringify({ sku: item?.sku ?? '' }),
     }).catch(() => showToast('Delete sync failed', 'warn'));
   }
 
