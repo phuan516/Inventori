@@ -3,7 +3,7 @@ import { authOptions } from '@/lib/auth';
 import { google } from 'googleapis';
 import { revalidateTag } from 'next/cache';
 import { NextRequest, NextResponse } from 'next/server';
-import { SALES_HEADERS } from '@/lib/sheet-schema';
+import { SALES_HEADERS, PRODUCT_HEADERS, colMap, colLetter } from '@/lib/sheet-schema';
 
 function makeAuth(accessToken: string) {
   const auth = new google.auth.OAuth2();
@@ -58,14 +58,16 @@ export async function POST(req: NextRequest, ctx: Ctx) {
   if (sheetId && Array.isArray(lines) && lines.length) {
     const invRes = await sheetsApi.spreadsheets.values.get({ spreadsheetId: sheetId, range: 'Products!A:G' });
     const invRows = (invRes.data.values ?? []) as string[][];
+    const c = colMap(invRows[0] ?? [], PRODUCT_HEADERS);
     const skuMap = new Map<string, { rowNum: number; stock: number }>();
     invRows.forEach((row, i) => {
-      if (i === 0 || !row[0]) return;
-      skuMap.set(row[0], { rowNum: i + 1, stock: parseInt(row[6]) || 0 });
+      if (i === 0 || !row[c['SKU']]) return;
+      skuMap.set(row[c['SKU']], { rowNum: i + 1, stock: parseInt(row[c['Stock']]) || 0 });
     });
+    const stockCol = colLetter(c['Stock']);
     const updates = (lines as { sku: string; qty: number }[]).flatMap(l => {
       const e = skuMap.get(l.sku) ?? skuMap.get(l.sku.toUpperCase());
-      return e ? [{ range: `Products!G${e.rowNum}`, values: [[e.stock + l.qty]] }] : [];
+      return e ? [{ range: `Products!${stockCol}${e.rowNum}`, values: [[e.stock + l.qty]] }] : [];
     });
     if (updates.length) {
       await sheetsApi.spreadsheets.values.batchUpdate({

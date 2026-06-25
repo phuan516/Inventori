@@ -4,6 +4,7 @@ import { google } from 'googleapis';
 import { revalidateTag } from 'next/cache';
 import { NextRequest, NextResponse } from 'next/server';
 import type { IntakeLine } from '@/lib/intakeData';
+import { INTAKE_HEADERS, PRODUCT_HEADERS, colMap, colLetter } from '@/lib/sheet-schema';
 
 function makeAuth(accessToken: string) {
   const auth = new google.auth.OAuth2();
@@ -14,22 +15,22 @@ function makeAuth(accessToken: string) {
 let _lineId = 0;
 function lineId() { return `RL${++_lineId}`; }
 
-function rowToLine(row: string[]): IntakeLine {
+function rowToLine(row: string[], c: Record<string, number>): IntakeLine {
   return {
     id: lineId(),
-    sku: row[0] ?? '',
-    upc: row[1] ?? '',
-    name: row[2] ?? '',
-    qty: parseInt(row[3]) || 0,
-    cost: parseFloat(row[4]) || 0,
-    price: parseFloat(row[5]) || 0,
-    mfr: row[6] ?? '',
-    cat: row[7] ?? '',
-    grade: (row[8] as IntakeLine['grade']) || '—',
-    series: row[9] ?? '',
-    hue: parseInt(row[10]) || 0,
-    matched: row[11] === 'TRUE' || row[11] === 'true',
-    low: parseInt(row[12]) || 0,
+    sku: row[c['SKU']] ?? '',
+    upc: row[c['UPC']] ?? '',
+    name: row[c['Name']] ?? '',
+    qty: parseInt(row[c['Qty']]) || 0,
+    cost: parseFloat(row[c['Cost']]) || 0,
+    price: parseFloat(row[c['Price']]) || 0,
+    mfr: row[c['Mfr']] ?? '',
+    cat: row[c['Cat']] ?? '',
+    grade: (row[c['Grade']] as IntakeLine['grade']) || '—',
+    series: row[c['Series']] ?? '',
+    hue: parseInt(row[c['Hue']]) || 0,
+    matched: row[c['Matched']] === 'TRUE' || row[c['Matched']] === 'true',
+    low: parseInt(row[c['Low']]) || 0,
     onHand: null,
   };
 }
@@ -54,11 +55,12 @@ export async function GET(req: NextRequest, ctx: Ctx) {
 
   const res = await sheetsApi.spreadsheets.values.get({
     spreadsheetId: intakeSheetId,
-    range: `'${id}'!A2:M`,
+    range: `'${id}'!A1:M`,
   });
 
   const rows = (res.data.values ?? []) as string[][];
-  const lines = rows.filter(r => r.some(c => c !== '' && c != null)).map(rowToLine);
+  const c = colMap(rows[0] ?? [], INTAKE_HEADERS);
+  const lines = rows.slice(1).filter(r => r.some(v => v !== '' && v != null)).map(row => rowToLine(row, c));
 
   return NextResponse.json({ lines });
 }
@@ -157,13 +159,15 @@ async function applyToInventory(
   const invRes = await sheetsApi.spreadsheets.values.get({ spreadsheetId: sheetId, range: 'Products!A:K' });
   const invRows = (invRes.data.values ?? []) as string[][];
 
+  const c = colMap(invRows[0] ?? [], PRODUCT_HEADERS);
+  const stockCol = colLetter(c['Stock']);
   const skuMap = new Map<string, { rowNum: number; stock: number }>();
   const upcMap = new Map<string, { rowNum: number; stock: number }>();
   invRows.forEach((row, i) => {
     if (i === 0) return;
-    const entry = { rowNum: i + 1, stock: parseInt(row[6]) || 0 };
-    if (row[0]) skuMap.set(row[0], entry);
-    if (row[1]) upcMap.set(row[1], entry);
+    const entry = { rowNum: i + 1, stock: parseInt(row[c['Stock']]) || 0 };
+    if (row[c['SKU']]) skuMap.set(row[c['SKU']], entry);
+    if (row[c['UPC']]) upcMap.set(row[c['UPC']], entry);
   });
 
   const stockUpdates: { range: string; values: number[][] }[] = [];
@@ -173,7 +177,7 @@ async function applyToInventory(
     const existing = skuMap.get(line.sku) ?? skuMap.get(line.sku.toUpperCase())
       ?? upcMap.get(line.sku) ?? upcMap.get(line.sku.toUpperCase());
     if (existing) {
-      stockUpdates.push({ range: `Products!G${existing.rowNum}`, values: [[existing.stock + line.qty]] });
+      stockUpdates.push({ range: `Products!${stockCol}${existing.rowNum}`, values: [[existing.stock + line.qty]] });
     } else {
       newRows.push([line.sku, '', line.name, line.cat || '', line.mfr || '', line.series || '', line.qty, 0, line.price || 0, line.cost || 0, line.hue || 0]);
     }

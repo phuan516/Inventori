@@ -3,7 +3,7 @@ import { authOptions } from '@/lib/auth';
 import { google } from 'googleapis';
 import { unstable_cache, revalidateTag } from 'next/cache';
 import { NextRequest, NextResponse } from 'next/server';
-import { SALES_HEADERS } from '@/lib/sheet-schema';
+import { SALES_HEADERS, PRODUCT_HEADERS, colMap, colLetter } from '@/lib/sheet-schema';
 
 function makeAuth(accessToken: string) {
   const auth = new google.auth.OAuth2();
@@ -55,17 +55,19 @@ async function fetchSalesFromSheet(salesSheetId: string, accessToken: string, fr
       continue;
     }
     const rows = resp.data.values ?? [];
+    if (!rows.length) continue;
+    const c = colMap(rows[0] as string[], SALES_HEADERS);
     for (let i = 1; i < rows.length; i++) {
       const row = rows[i];
-      if (!row?.[0]) continue;
-      const id = String(row[0]);
+      if (!row?.[c['ID']]) continue;
+      const id = String(row[c['ID']]);
 
-      // New format: Status col N = 'UNDO'
-      if (String(row[13] ?? '') === 'UNDO') { undoneIds.add(id); continue; }
+      // New format: Status col = 'UNDO'
+      if (String(row[c['Status']] ?? '') === 'UNDO') { undoneIds.add(id); continue; }
       // Legacy format: UNDO- prefix
       if (id.startsWith('UNDO-')) { undoneIds.add(id.slice(5)); continue; }
 
-      const dateStr = String(row[1] ?? '');
+      const dateStr = String(row[c['Date']] ?? '');
       if (filterByDate) {
         const parsedDate = new Date(dateStr);
         if (isNaN(parsedDate.getTime())) continue;
@@ -74,13 +76,13 @@ async function fetchSalesFromSheet(salesSheetId: string, accessToken: string, fr
       }
 
       const line = {
-        sku: String(row[4] ?? ''),
-        name: String(row[5] ?? ''),
-        qty: parseInt(String(row[6] ?? '0'), 10) || 0,
-        unitPrice: parseFloat(String(row[7] ?? '0')) || 0,
-        discount: String(row[8] ?? ''),
-        effectivePrice: parseFloat(String(row[9] ?? '0')) || 0,
-        lineTotal: parseFloat(String(row[10] ?? '0')) || 0,
+        sku: String(row[c['SKU']] ?? ''),
+        name: String(row[c['Name']] ?? ''),
+        qty: parseInt(String(row[c['Qty']] ?? '0'), 10) || 0,
+        unitPrice: parseFloat(String(row[c['Unit Price']] ?? '0')) || 0,
+        discount: String(row[c['Discount JSON']] ?? ''),
+        effectivePrice: parseFloat(String(row[c['Effective Price']] ?? '0')) || 0,
+        lineTotal: parseFloat(String(row[c['Line Total']] ?? '0')) || 0,
       };
 
       if (salesMap.has(id)) {
@@ -89,11 +91,12 @@ async function fetchSalesFromSheet(salesSheetId: string, accessToken: string, fr
         salesMap.set(id, {
           id,
           date: dateStr,
-          time: String(row[2] ?? ''),
-          customer: String(row[3] ?? ''),
+          time: String(row[c['Time']] ?? ''),
+          customer: String(row[c['Customer']] ?? ''),
           lines: [line],
-          saleDiscount: String(row[11] ?? ''),
-          total: parseFloat(String(row[12] ?? '0')) || 0,
+          // ponytail: Sale Discount and Total are sparse — only the first row of a multi-line sale carries them
+          saleDiscount: String(row[c['Sale Discount JSON']] ?? ''),
+          total: parseFloat(String(row[c['Total']] ?? '0')) || 0,
         });
       }
     }
@@ -139,14 +142,16 @@ async function applyStockDelta(
 ) {
   const res = await sheetsApi.spreadsheets.values.get({ spreadsheetId: sheetId, range: 'Products!A:G' });
   const rows = (res.data.values ?? []) as string[][];
+  const c = colMap(rows[0] ?? [], PRODUCT_HEADERS);
   const skuMap = new Map<string, { rowNum: number; stock: number }>();
   rows.forEach((row, i) => {
-    if (i === 0 || !row[0]) return;
-    skuMap.set(row[0], { rowNum: i + 1, stock: parseInt(row[6]) || 0 });
+    if (i === 0 || !row[c['SKU']]) return;
+    skuMap.set(row[c['SKU']], { rowNum: i + 1, stock: parseInt(row[c['Stock']]) || 0 });
   });
+  const stockCol = colLetter(c['Stock']);
   const updates = lines.flatMap(l => {
     const e = skuMap.get(l.sku) ?? skuMap.get(l.sku.toUpperCase());
-    return e ? [{ range: `Products!G${e.rowNum}`, values: [[Math.max(0, e.stock + direction * l.qty)]] }] : [];
+    return e ? [{ range: `Products!${stockCol}${e.rowNum}`, values: [[Math.max(0, e.stock + direction * l.qty)]] }] : [];
   });
   if (updates.length) {
     await sheetsApi.spreadsheets.values.batchUpdate({

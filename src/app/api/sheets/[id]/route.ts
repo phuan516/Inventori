@@ -4,6 +4,7 @@ import { google } from 'googleapis';
 import { unstable_cache, revalidateTag } from 'next/cache';
 import { NextRequest, NextResponse } from 'next/server';
 import type { Product } from '@/lib/types';
+import { PRODUCT_HEADERS, colMap, colLetter } from '@/lib/sheet-schema';
 
 const SHEET = 'Products';
 
@@ -13,21 +14,20 @@ function makeAuth(accessToken: string) {
   return auth;
 }
 
-// 11-column layout: SKU UPC Name Category Manufacturer Series Stock LowStock Price Cost Hue
-function rowToProduct(row: string[]): Product | null {
-  if (!row[2]) return null; // skip empty rows — name is the required field
+function rowToProduct(row: string[], c: Record<string, number>): Product | null {
+  if (!row[c['Name']]) return null;
   return {
-    sku:    row[0] ?? '',
-    upc:    row[1] ?? '',
-    name:   row[2] ?? '',
-    cat:    row[3] ?? '',
-    mfr:    row[4] ?? '',
-    series: row[5] ?? '',
-    stock:  parseInt(row[6]) || 0,
-    low:    parseInt(row[7]) || 0,
-    price:  parseFloat(row[8]) || 0,
-    cost:   parseFloat(row[9]) || 0,
-    hue:    parseInt(row[10]) || 0,
+    sku:    row[c['SKU']] ?? '',
+    upc:    row[c['UPC']] ?? '',
+    name:   row[c['Name']] ?? '',
+    cat:    row[c['Category']] ?? '',
+    mfr:    row[c['Manufacturer']] ?? '',
+    series: row[c['Series']] ?? '',
+    stock:  parseInt(row[c['Stock']]) || 0,
+    low:    parseInt(row[c['Low Stock']]) || 0,
+    price:  parseFloat(row[c['Price']]) || 0,
+    cost:   parseFloat(row[c['Cost']]) || 0,
+    hue:    parseInt(row[c['Hue']]) || 0,
   };
 }
 
@@ -55,7 +55,9 @@ async function fetchProductsFromSheet(sheetId: string, accessToken: string): Pro
     range: `${SHEET}!A:K`,
   });
   const rows = (res.data.values ?? []) as string[][];
-  return rows.slice(1).map(rowToProduct).filter(Boolean) as Product[];
+  if (!rows.length) return [];
+  const c = colMap(rows[0], PRODUCT_HEADERS);
+  return rows.slice(1).map(row => rowToProduct(row, c)).filter(Boolean) as Product[];
 }
 
 // GET — read all products (cached for 60 s; invalidated on any mutation)
