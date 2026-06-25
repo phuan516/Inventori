@@ -158,17 +158,20 @@ async function applyToInventory(
   const invRows = (invRes.data.values ?? []) as string[][];
 
   const skuMap = new Map<string, { rowNum: number; stock: number }>();
+  const upcMap = new Map<string, { rowNum: number; stock: number }>();
   invRows.forEach((row, i) => {
     if (i === 0) return;
-    if (row[0]) skuMap.set(row[0], { rowNum: i + 1, stock: parseInt(row[6]) || 0 });
-    if (row[1]) skuMap.set(row[1], { rowNum: i + 1, stock: parseInt(row[6]) || 0 });
+    const entry = { rowNum: i + 1, stock: parseInt(row[6]) || 0 };
+    if (row[0]) skuMap.set(row[0], entry);
+    if (row[1]) upcMap.set(row[1], entry);
   });
 
   const stockUpdates: { range: string; values: number[][] }[] = [];
   const newRows: (string | number)[][] = [];
 
   for (const line of lines) {
-    const existing = skuMap.get(line.sku) ?? skuMap.get(line.sku.toUpperCase());
+    const existing = skuMap.get(line.sku) ?? skuMap.get(line.sku.toUpperCase())
+      ?? upcMap.get(line.sku) ?? upcMap.get(line.sku.toUpperCase());
     if (existing) {
       stockUpdates.push({ range: `Products!G${existing.rowNum}`, values: [[existing.stock + line.qty]] });
     } else {

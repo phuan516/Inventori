@@ -61,11 +61,12 @@ interface SalesTabProps {
   sheetName: string;
   salesSheetId: string | null;
   holdSheetId: string | null;
+  sheetId: string | null;
   onStockUpdate: (sku: string, delta: number) => void;
   onToast: (msg: string, tone: 'ok' | 'warn') => void;
 }
 
-export default function SalesTab({ products, sheetName, salesSheetId: salesSheetIdProp, holdSheetId: holdSheetIdProp, onStockUpdate, onToast }: SalesTabProps) {
+export default function SalesTab({ products, sheetName, salesSheetId: salesSheetIdProp, holdSheetId: holdSheetIdProp, sheetId, onStockUpdate, onToast }: SalesTabProps) {
   const [subTab, setSubTab] = useState<'register' | 'history'>('register');
   const [ticket, setTicket] = useState<TicketLine[]>([]);
   const [heldTickets, setHeldTickets] = useState<HeldTicket[]>([]);
@@ -295,6 +296,7 @@ export default function SalesTab({ products, sheetName, salesSheetId: salesSheet
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         salesSheetId: sheets.salesSheetId,
+        sheetId,
         saleId,
         date: now.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
         time: now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
@@ -333,6 +335,7 @@ export default function SalesTab({ products, sheetName, salesSheetId: salesSheet
         <SalesHistoryTab
           salesSheetId={salesSheetId}
           sheetName={sheetName}
+          sheetId={sheetId}
           onStockUpdate={onStockUpdate}
           onToast={onToast}
         />

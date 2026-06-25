@@ -20,6 +20,7 @@ export interface SaleRecord {
 
 interface SalesHistoryTabProps {
   salesSheetId: string | null; sheetName: string;
+  sheetId: string | null;
   onStockUpdate: (sku: string, delta: number) => void;
   onToast: (msg: string, tone: 'ok' | 'warn') => void;
 }
@@ -56,7 +57,7 @@ function formatSaleId(id: string): string {
   return '#' + id.replace('SALE-', '').slice(-6);
 }
 
-export default function SalesHistoryTab({ salesSheetId, sheetName, onStockUpdate, onToast }: SalesHistoryTabProps) {
+export default function SalesHistoryTab({ salesSheetId, sheetName, sheetId, onStockUpdate, onToast }: SalesHistoryTabProps) {
   const [sales, setSales] = useState<SaleRecord[]>([]);
   const [loading, setLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -154,7 +155,11 @@ export default function SalesHistoryTab({ salesSheetId, sheetName, onStockUpdate
     try {
       const res = await fetch(`/api/sales/${encodeURIComponent(undoConfirmId)}/undo`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ salesSheetId }),
+        body: JSON.stringify({
+          salesSheetId,
+          sheetId,
+          lines: sale.lines.map(l => ({ sku: l.sku, qty: l.qty })),
+        }),
       });
       if (!res.ok) throw new Error('Server error');
       sale.lines.forEach(l => onStockUpdate(l.sku, l.qty));

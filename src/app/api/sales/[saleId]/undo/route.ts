@@ -18,7 +18,7 @@ export async function POST(req: NextRequest, ctx: Ctx) {
   const session = await getServerSession(authOptions);
   if (!session?.accessToken) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const { salesSheetId } = await req.json();
+  const { salesSheetId, sheetId, lines } = await req.json();
   if (!salesSheetId) return NextResponse.json({ error: 'Missing salesSheetId' }, { status: 400 });
 
   const { saleId } = await ctx.params;
@@ -55,6 +55,26 @@ export async function POST(req: NextRequest, ctx: Ctx) {
       values: [[`UNDO-${saleId}`, undoDate, undoTime, '', '', 'UNDO MARKER', '', '', '', '', '', '', '']],
     },
   });
+
+  if (sheetId && Array.isArray(lines) && lines.length) {
+    const invRes = await sheetsApi.spreadsheets.values.get({ spreadsheetId: sheetId, range: 'Products!A:G' });
+    const invRows = (invRes.data.values ?? []) as string[][];
+    const skuMap = new Map<string, { rowNum: number; stock: number }>();
+    invRows.forEach((row, i) => {
+      if (i === 0 || !row[0]) return;
+      skuMap.set(row[0], { rowNum: i + 1, stock: parseInt(row[6]) || 0 });
+    });
+    const updates = (lines as { sku: string; qty: number }[]).flatMap(l => {
+      const e = skuMap.get(l.sku) ?? skuMap.get(l.sku.toUpperCase());
+      return e ? [{ range: `Products!G${e.rowNum}`, values: [[e.stock + l.qty]] }] : [];
+    });
+    if (updates.length) {
+      await sheetsApi.spreadsheets.values.batchUpdate({
+        spreadsheetId: sheetId,
+        requestBody: { valueInputOption: 'RAW', data: updates },
+      });
+    }
+  }
 
   revalidateTag(`sales:${salesSheetId}`);
   return NextResponse.json({ ok: true });

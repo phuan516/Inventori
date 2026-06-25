@@ -154,6 +154,12 @@ export default function AppPage() {
     scheduleStockSave(sku);
   }
 
+  function updateStockLocal(sku: string, delta: number) {
+    setItems(prev => prev.map(p =>
+      p.sku === sku ? { ...p, stock: Math.max(0, p.stock + delta) } : p
+    ));
+  }
+
   function saveItem(updated: Product) {
     setItems(prev => prev.map(p => p.sku === updated.sku ? updated : p));
     setSelected(null);
@@ -345,7 +351,8 @@ export default function AppPage() {
           sheetName={sheetName}
           salesSheetId={salesSheetId}
           holdSheetId={holdSheetId}
-          onStockUpdate={updateStock}
+          sheetId={sheetId}
+          onStockUpdate={updateStockLocal}
           onToast={showToast}
         />
       )}
