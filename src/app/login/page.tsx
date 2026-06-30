@@ -1,5 +1,6 @@
 'use client';
 
+import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import type { CSSProperties, ReactNode } from 'react';
@@ -42,7 +43,7 @@ export default function LoginPage() {
         {/* Logo */}
         <div style={{ position: 'relative', zIndex: 1, display: 'flex', alignItems: 'center', gap: 9 }}>
           <div style={{ width: 28, height: 28, borderRadius: 7, background: T.brand, display: 'grid', placeItems: 'center' }}>
-            <div style={{ width: 14, height: 14, border: '2px solid white', borderRadius: 2, transform: 'rotate(45deg)' }} />
+            <Image src="/inventori-mark.png" alt="" width={18} height={18} />
           </div>
           <span style={{ fontSize: 16, fontWeight: 600, letterSpacing: '-.01em' }}>Inventori</span>
         </div>
