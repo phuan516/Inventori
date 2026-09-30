@@ -86,3 +86,11 @@ All UI interactions work against in-memory state seeded from `src/lib/data.ts`.
 4. In `src/app/inventory/page.tsx`, replace the `SEED` initial state with a fetch to `GET /api/sheets/items`, and wire mutations to `PUT /api/sheets/items`.
 
 See `spec.md` for the full product and data specification.
+
+## License
+
+[MIT](LICENSE). You are free to use, change and share Inventori,
+including commercially, as long as you keep the copyright notice and
+credit:
+
+> Based on [Inventori](https://github.com/phuan516/Inventori) by Peter Huang.
