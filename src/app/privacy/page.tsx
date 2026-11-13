@@ -170,6 +170,7 @@ export default function PrivacyPage() {
           <div style={{ flex: 1 }} />
           <Link href="/privacy" style={{ color: T.mute, textDecoration: 'none' }}>Privacy</Link>
           <a style={{ color: T.mute, cursor: 'pointer' }}>Terms</a>
+          <a href="https://wizardindustries.app" style={{ color: T.mute, textDecoration: 'none' }}>Made by Wizard Industries</a>
         </div>
       </footer>
     </div>
