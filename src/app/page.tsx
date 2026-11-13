@@ -190,6 +190,7 @@ export default function LandingPage() {
           <Link href="/privacy" style={{ color: T.mute, textDecoration: 'none' }}>Privacy</Link>
           <Link href="/terms" style={{ color: T.mute, textDecoration: 'none' }}>Terms</Link>
           <a style={{ color: T.mute, cursor: 'pointer' }}>Open source</a>
+          <a href="https://wizardindustries.app" style={{ color: T.mute, textDecoration: 'none' }}>Made by Wizard Industries</a>
         </div>
       </footer>
 
